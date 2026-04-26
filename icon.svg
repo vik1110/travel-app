@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F8EBF2"/>
+      <stop offset="100%" stop-color="#EDD9E5"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="38" fill="url(#bg)"/>
+  <g transform="translate(90,124)">
+    <path d="M0,14 C-22,-6 -42,-28 -30,-52 C-22,-66 -7,-76 0,-62 C7,-76 22,-66 30,-52 C42,-28 22,-6 0,14Z" fill="#F4B8CC" stroke="#D56989" stroke-width="1" stroke-opacity="0.35" transform="rotate(0)"/>
+    <path d="M0,14 C-22,-6 -42,-28 -30,-52 C-22,-66 -7,-76 0,-62 C7,-76 22,-66 30,-52 C42,-28 22,-6 0,14Z" fill="#F4B8CC" stroke="#D56989" stroke-width="1" stroke-opacity="0.35" transform="rotate(72)"/>
+    <path d="M0,14 C-22,-6 -42,-28 -30,-52 C-22,-66 -7,-76 0,-62 C7,-76 22,-66 30,-52 C42,-28 22,-6 0,14Z" fill="#F4B8CC" stroke="#D56989" stroke-width="1" stroke-opacity="0.35" transform="rotate(144)"/>
+    <path d="M0,14 C-22,-6 -42,-28 -30,-52 C-22,-66 -7,-76 0,-62 C7,-76 22,-66 30,-52 C42,-28 22,-6 0,14Z" fill="#F4B8CC" stroke="#D56989" stroke-width="1" stroke-opacity="0.35" transform="rotate(216)"/>
+    <path d="M0,14 C-22,-6 -42,-28 -30,-52 C-22,-66 -7,-76 0,-62 C7,-76 22,-66 30,-52 C42,-28 22,-6 0,14Z" fill="#F4B8CC" stroke="#D56989" stroke-width="1" stroke-opacity="0.35" transform="rotate(288)"/>
+    <line x1="0"  y1="-18" x2="0"   y2="-28" stroke="#C4607A" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="9"  y1="-16" x2="15"  y2="-24" stroke="#C4607A" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="-9" y1="-16" x2="-15" y2="-24" stroke="#C4607A" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="5"  y1="-18" x2="9"   y2="-28" stroke="#C4607A" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="-5" y1="-18" x2="-9"  y2="-28" stroke="#C4607A" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="0"   cy="-29" r="2.5" fill="#D56989"/>
+    <circle cx="15"  cy="-25" r="2"   fill="#D56989"/>
+    <circle cx="-15" cy="-25" r="2"   fill="#D56989"/>
+    <circle cx="9"   cy="-29" r="2"   fill="#D56989"/>
+    <circle cx="-9"  cy="-29" r="2"   fill="#D56989"/>
+    <circle r="18" fill="#FFE580"/>
+    <circle r="8"  fill="#FFD43B"/>
+  </g>
+</svg>
