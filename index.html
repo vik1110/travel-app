@@ -1,0 +1,3540 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#F9F8F6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="旅遊">
+  <title>京都 2026 — Yuhsuan's Journey</title>
+  <link rel="apple-touch-icon" href="icon.svg?v=2">
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ══════════════════════════════════════
+       DESIGN TOKENS — Botanical / Organic
+       ══════════════════════════════════════ */
+    :root {
+      --bg:           #F3EEF1;   /* Powdered Lilac Grey */
+      --fg:           #3D2030;   /* Dark rose — 文字用 */
+      --primary:      #EA9CAF;   /* Petal Glaze — 淡粉標籤 */
+      --muted-bg:     #FAF6F8;   /* 近白 */
+      --muted-fg:     #9A7585;   /* 淡玫瑰灰 */
+      --interactive:  #D56989;   /* Dusty Orchid — 主互動色 */
+      --accent:       #C2DC80;   /* Sorbet Stem — 綠色輔助 */
+      --white:        #FFFFFF;
+      --border:       #EEDADF;
+      --border-strong:#3D2030;
+      --dark-section: #D56989;   /* 取代深紫的深色區塊 */
+      --shadow-xs:    0 2px 8px rgba(213,105,137,0.06);
+      --shadow-sm:    0 4px 6px rgba(213,105,137,0.08);
+      --shadow-md:    0 10px 20px rgba(213,105,137,0.10);
+      --shadow-btn:   0 4px 16px rgba(213,105,137,0.18);
+      --shadow-btn-h: 0 8px 24px rgba(213,105,137,0.28);
+      --radius-sm:    12px;
+      --radius-md:    18px;
+      --radius-lg:    24px;
+      --radius-pill:  9999px;
+      --font-serif:   'Playfair Display', Georgia, serif;
+      --font-sans:    'Source Sans 3', system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    * { -webkit-tap-highlight-color: transparent; outline: none; }
+    button, a { cursor: pointer; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: 72px;
+      font-size: 15px;
+      line-height: 1.625;
+    }
+
+    /* Paper grain */
+    body::before {
+      content: '';
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 998;
+      opacity: 0.02;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+    }
+
+    /* ══════════════════════
+       BOTTOM NAV — Botanical
+       ══════════════════════ */
+    .nav-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 200;
+      display: flex;
+      background: rgba(249,248,244,0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+      padding: 4px 0;
+      transition: all 0.3s ease;
+      color: var(--primary);
+      opacity: 0.45;
+      border: none;
+      background: none;
+      font-family: var(--font-sans);
+      position: relative;
+    }
+    .nav-item.active { opacity: 1; color: var(--fg); }
+    .nav-item svg { width: 22px; height: 22px; stroke-width: 1.5; }
+    .nav-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+    }
+
+    /* ══════════════════════
+       PAGES
+       ══════════════════════ */
+    .page { display: none; animation: fadeIn 0.6s ease; }
+    .page.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ══════════════════════
+       TYPOGRAPHY
+       ══════════════════════ */
+    h1, h2, h3, h4 {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      line-height: 1.1;
+    }
+    .overline {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+    }
+    .gold-line {
+      display: inline-block;
+      width: 32px;
+      height: 1px;
+      background: var(--accent);
+      vertical-align: middle;
+      margin-right: 12px;
+    }
+
+    /* ══════════════════════
+       HOME PAGE
+       ══════════════════════ */
+    .hero {
+      padding: 40px 20px 32px;
+      text-align: center;
+    }
+    .hero-overline {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #4a6a20;
+      background: rgba(194,220,128,0.35);
+      padding: 5px 16px;
+      border-radius: var(--radius-pill);
+      margin-bottom: 20px;
+    }
+    .hero-title {
+      font-family: var(--font-serif);
+      font-size: clamp(44px, 13vw, 72px);
+      font-weight: 700;
+      line-height: 1.05;
+      color: var(--fg);
+      margin-bottom: 6px;
+    }
+    .hero-title em {
+      font-style: italic;
+      color: var(--primary);
+    }
+    .hero-sub {
+      font-size: 13px;
+      color: var(--primary);
+      letter-spacing: 0.06em;
+      font-weight: 500;
+    }
+
+    /* Countdown */
+    .countdown-section {
+      margin: 16px 20px 0;
+      background: linear-gradient(135deg, #F8EBF2 0%, #EDD9E5 100%);
+      border: 1px solid #E8CEDB;
+      border-radius: var(--radius-lg);
+      padding: 14px 20px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .countdown-section::after {
+      content: '🌸';
+      position: absolute;
+      right: 14px; top: 50%; transform: translateY(-50%);
+      font-size: 32px;
+      opacity: 0.2;
+      pointer-events: none;
+    }
+    .cd-left { flex: 0 0 auto; }
+    .cd-right { flex: 1; }
+    .cd-label {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      margin-bottom: 2px;
+    }
+    .cd-number {
+      font-family: var(--font-serif);
+      font-size: clamp(36px, 10vw, 48px);
+      font-weight: 700;
+      line-height: 1;
+      color: var(--fg);
+    }
+    .cd-number span.accent { color: var(--interactive); }
+    .cd-unit {
+      font-size: 11px;
+      color: var(--muted-fg);
+      margin-top: 2px;
+      letter-spacing: 0.05em;
+    }
+    .cd-date {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 12px;
+      color: var(--muted-fg);
+      margin-top: 2px;
+    }
+
+    /* Weather forecast */
+    .weather-section {
+      margin: 16px 20px 0;
+    }
+    .weather-scroll {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .weather-scroll::-webkit-scrollbar { display: none; }
+    .weather-card {
+      flex: 0 0 auto;
+      width: 94px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 8px 10px;
+      text-align: center;
+      box-shadow: var(--shadow-xs);
+    }
+    .weather-card.today-card {
+      border-color: var(--interactive);
+      background: linear-gradient(160deg, #FDF0F5 0%, #F8E6EF 100%);
+    }
+    .weather-date { font-size: 11px; font-weight: 700; color: var(--muted-fg); letter-spacing: 0.05em; }
+    .weather-day  { font-size: 9px; color: var(--primary); margin-bottom: 4px; }
+    .weather-icon { font-size: 20px; line-height: 1; margin-bottom: 4px; }
+    .weather-high { font-size: 14px; font-weight: 700; color: var(--fg); line-height: 1; }
+    .weather-low  { font-size: 11px; color: var(--muted-fg); margin-top: 1px; }
+    .weather-desc { font-size: 9px; color: var(--muted-fg); margin-top: 3px; line-height: 1.2; }
+    .weather-note {
+      font-size: 10px;
+      color: var(--muted-fg);
+      margin-top: 8px;
+      text-align: center;
+      font-style: italic;
+    }
+
+    /* Flight dashboard — side by side */
+    .flight-dashboard {
+      margin: 16px 20px 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .flt-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 12px;
+      box-shadow: var(--shadow-xs);
+    }
+    .flt-card.outbound { border-top: 3px solid var(--interactive); }
+    .flt-card.inbound  { border-top: 3px solid var(--accent); }
+    .flt-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      margin-bottom: 6px;
+    }
+    .flt-no {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--fg);
+      line-height: 1;
+    }
+    .flt-plane { font-size: 16px; margin-left: 4px; }
+    .flt-route {
+      font-size: 11px;
+      color: var(--muted-fg);
+      margin: 6px 0 4px;
+      line-height: 1.4;
+    }
+    .flt-time {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--interactive);
+    }
+    .flt-date {
+      font-size: 10px;
+      color: var(--muted-fg);
+      margin-top: 3px;
+    }
+
+    /* ── Subway Map Button ── */
+    .subway-btn-wrap {
+      margin: 14px 20px 0;
+    }
+    .subway-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 13px 18px;
+      background: linear-gradient(135deg, #EFF6FF 0%, #E4EFFE 100%);
+      border: 1px solid #C7DAFB;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--fg);
+      box-shadow: var(--shadow-xs);
+      transition: all 0.2s ease;
+    }
+    .subway-btn:active { transform: scale(0.98); }
+    .subway-btn-icon { font-size: 22px; flex-shrink: 0; }
+    .subway-btn-body { flex: 1; text-align: left; }
+    .subway-btn-title { font-size: 13px; font-weight: 700; color: var(--fg); }
+    .subway-btn-sub { font-size: 11px; color: #5B7DB1; margin-top: 1px; }
+    .subway-btn-arrow { font-size: 18px; color: #5B7DB1; opacity: 0.6; }
+
+    /* ── Booking Strip ── */
+    .booking-strip {
+      margin: 0 20px 14px;
+      background: linear-gradient(135deg, #3D2030 0%, #5A2D40 100%);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      display: flex;
+      gap: 0;
+    }
+    .booking-item {
+      flex: 1;
+      text-align: center;
+    }
+    .booking-item + .booking-item {
+      border-left: 1px solid rgba(255,255,255,0.15);
+    }
+    .booking-label {
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 4px;
+    }
+    .booking-code {
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 700;
+      color: #FFE066;
+      letter-spacing: 0.05em;
+    }
+    .booking-sub {
+      font-size: 10px;
+      color: rgba(255,255,255,0.45);
+      margin-top: 2px;
+    }
+
+    /* ── Side-by-side scrollable flight cards ── */
+    .flight-cards-scroll {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 0 20px 4px;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .flight-cards-scroll::-webkit-scrollbar { display: none; }
+    .flight-cards-scroll .flight-display-card {
+      flex: 0 0 calc(88vw - 20px);
+      max-width: 320px;
+      margin: 0;
+    }
+    .flight-display-card.outbound { border-top: 3px solid var(--interactive); }
+    .flight-display-card.inbound  { border-top: 3px solid var(--accent); }
+
+    /* Daily tips */
+    .tips-section {
+      margin: 16px 20px 0;
+    }
+    .tips-header {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tips-header .gold-line { display: inline-block; }
+    .tips-scroll {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .tip-day-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow-xs);
+      text-decoration: none;
+      color: inherit;
+    }
+    .tip-day-card:active { transform: scale(0.98); }
+    .tip-day-num {
+      font-family: var(--font-serif);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--interactive);
+      min-width: 32px;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .tip-day-num span { display: block; font-size: 16px; }
+    .tip-day-body { flex: 1; }
+    .tip-day-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--fg);
+      margin-bottom: 3px;
+    }
+    .tip-day-hint {
+      font-size: 12px;
+      color: var(--muted-fg);
+      line-height: 1.4;
+    }
+    .tip-day-arrow {
+      font-size: 18px;
+      color: var(--primary);
+      opacity: 0.6;
+    }
+
+    /* Day tab — weekday label */
+    .day-tab .tab-dow {
+      display: block;
+      font-size: 9px;
+      letter-spacing: 0.05em;
+      font-weight: 400;
+      opacity: 0.6;
+      margin-top: 1px;
+    }
+
+    /* Day map section */
+    .day-map-section {
+      margin: 0 20px 4px;
+    }
+    .day-map-header {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .day-map-container {
+      width: 100%;
+      height: 200px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      display: block;
+      border: 1px solid var(--border);
+      z-index: 1;
+      position: relative;
+    }
+    .day-map-container .leaflet-container {
+      border-radius: var(--radius-md);
+    }
+    /* Leaflet numbered markers */
+    .map-pin {
+      width: 26px; height: 26px;
+      background: var(--interactive);
+      border: 2px solid white;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--font-sans);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      margin-left: -13px; margin-top: -13px;
+    }
+    /* Timeline add controls */
+    .tl-add-wrap {
+      padding: 0 20px 12px;
+    }
+    .tl-add-btn {
+      width: 100%;
+      padding: 10px 16px;
+      background: none;
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius-md);
+      color: var(--muted-fg);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.02em;
+    }
+    .tl-add-btn:hover { border-color: var(--interactive); color: var(--interactive); background: rgba(213,105,137,0.05); }
+    .tl-add-form {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      box-shadow: var(--shadow-sm);
+      margin-top: 8px;
+    }
+    .tl-add-form-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .tl-add-time {
+      width: 88px; padding: 8px 8px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-family: var(--font-sans); font-size: 13px;
+      background: var(--bg); color: var(--fg);
+    }
+    .tl-add-name {
+      flex: 1; padding: 8px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-family: var(--font-sans); font-size: 13px;
+      background: var(--bg); color: var(--fg);
+    }
+    .tl-add-name::placeholder { color: var(--muted-fg); }
+    .tl-add-confirm {
+      padding: 8px 16px;
+      background: var(--interactive); color: white;
+      border: none; border-radius: var(--radius-sm);
+      font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+      cursor: pointer;
+    }
+    .tl-add-cancel {
+      padding: 8px 14px;
+      background: none; color: var(--muted-fg);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-family: var(--font-sans); font-size: 13px;
+      cursor: pointer;
+    }
+    /* Custom tl-item */
+    .tl-item.custom-item .tl-body { border-left: 3px solid var(--accent); }
+    .tl-del-btn {
+      margin-top: 6px;
+      padding: 3px 10px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 10px;
+      color: var(--muted-fg);
+      cursor: pointer;
+      font-family: var(--font-sans);
+    }
+    .tl-del-btn:hover { border-color: #e05; color: #e05; }
+    .tl-ticket-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      margin-bottom: 2px;
+      padding: 6px 14px;
+      background: var(--interactive);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      box-shadow: var(--shadow-btn);
+    }
+    /* Ticket lightbox */
+    .ticket-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(30,10,18,0.88);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .ticket-overlay.open { display: flex; }
+    .ticket-overlay img {
+      max-width: 100%;
+      max-height: 88vh;
+      border-radius: 14px;
+      object-fit: contain;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .ticket-close {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--fg);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    .day-map-route-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 10px 16px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      color: var(--interactive);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      box-shadow: var(--shadow-xs);
+    }
+
+    /* Timeline — map link */
+    .tl-map-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--interactive);
+      text-decoration: none;
+      padding: 3px 9px;
+      background: rgba(213,105,137,0.08);
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    /* USJ Minecart pass card */
+    .usj-pass-card {
+      margin: 12px 0 4px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+    .usj-pass-card::before {
+      content: '⛏';
+      position: absolute;
+      right: 14px; top: 10px;
+      font-size: 36px;
+      opacity: 0.2;
+      pointer-events: none;
+    }
+    .usj-pass-label {
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 4px;
+    }
+    .usj-pass-title {
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 700;
+      color: #FFD700;
+      margin-bottom: 8px;
+    }
+    .usj-pass-detail {
+      font-size: 12px;
+      color: rgba(255,255,255,0.8);
+      line-height: 1.6;
+    }
+    .usj-pass-badge {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 12px;
+      background: #FFD700;
+      color: #1a1a2e;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    /* Free schedule */
+    .free-schedule {
+      margin: 12px 20px 20px;
+      background: var(--muted-bg);
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+    .free-schedule-header {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+    .free-schedule-input {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .free-sched-time {
+      width: 78px;
+      padding: 8px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      background: var(--white);
+      color: var(--fg);
+    }
+    .free-sched-name {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      background: var(--white);
+      color: var(--fg);
+    }
+    .free-sched-name::placeholder, .free-sched-time::placeholder { color: var(--muted-fg); }
+    .free-sched-add {
+      padding: 8px 14px;
+      background: var(--interactive);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 20px;
+      cursor: pointer;
+      font-weight: 400;
+      line-height: 1;
+    }
+    .free-sched-list { display: flex; flex-direction: column; gap: 6px; min-height: 4px; }
+    .free-sched-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      transition: box-shadow 0.2s;
+    }
+    .free-sched-item.dragging { opacity: 0.45; box-shadow: var(--shadow-md); }
+    .free-sched-drag { color: var(--muted-fg); font-size: 15px; cursor: grab; user-select: none; }
+    .free-sched-item-time { font-size: 12px; font-weight: 700; color: var(--interactive); min-width: 38px; }
+    .free-sched-item-name { flex: 1; font-size: 13px; color: var(--fg); }
+    .free-sched-del { background: none; border: none; color: var(--muted-fg); font-size: 16px; cursor: pointer; padding: 0 2px; }
+
+    /* YouTube video cards */
+    .video-intro {
+      margin: 0 20px 14px;
+      padding: 14px 16px;
+      background: var(--muted-bg);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted-fg);
+      line-height: 1.6;
+    }
+    .video-card {
+      margin: 0 20px 14px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-xs);
+      text-decoration: none;
+      display: block;
+    }
+    .video-thumb {
+      width: 100%;
+      height: 156px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      font-size: 52px;
+    }
+    .video-play {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+      padding-left: 4px;
+    }
+    .video-meta {
+      padding: 12px 14px 14px;
+    }
+    .video-channel {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--interactive);
+      margin-bottom: 5px;
+    }
+    .video-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--fg);
+      margin-bottom: 5px;
+      line-height: 1.4;
+    }
+    .video-desc {
+      font-size: 12px;
+      color: var(--muted-fg);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+    .video-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      background: #FF0000;
+      color: white;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    /* Expense tracker */
+    .expense-form {
+      margin: 0 20px 12px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      box-shadow: var(--shadow-xs);
+    }
+    .exp-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .exp-input, .exp-select {
+      flex: 1;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--fg);
+    }
+    .exp-select { flex: 0 0 80px; }
+    .exp-amount { flex: 0 0 100px; }
+    .exp-payer { display: flex; gap: 6px; margin-bottom: 10px; }
+    .exp-payer-btn {
+      flex: 1;
+      padding: 8px 6px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--white);
+      color: var(--muted-fg);
+      transition: all 0.2s;
+      font-family: var(--font-sans);
+    }
+    .exp-payer-btn.sel-vik { border-color: var(--interactive); color: var(--interactive); background: rgba(213,105,137,0.1); }
+    .exp-payer-btn.sel-mike { border-color: #8aba3a; color: #5a8a10; background: rgba(194,220,128,0.18); }
+    .exp-add-btn {
+      width: 100%;
+      padding: 11px;
+      background: var(--interactive);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .expense-list { margin: 0 20px; display: flex; flex-direction: column; gap: 7px; }
+    .expense-item {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-xs);
+      overflow: hidden;
+      cursor: pointer;
+      transition: box-shadow 0.2s;
+    }
+    .expense-item:active { box-shadow: var(--shadow-sm); }
+    .expense-item-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+    }
+    .expense-item-detail {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid var(--border);
+      background: var(--muted-bg);
+      padding: 8px 12px;
+    }
+    .expense-item.expanded .expense-item-detail { display: flex; }
+    .exp-chevron { font-size: 11px; color: var(--muted-fg); margin-left: auto; transition: transform 0.2s; }
+    .expense-item.expanded .exp-chevron { transform: rotate(180deg); }
+    .exp-tag {
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .exp-tag.vik { background: rgba(213,105,137,0.15); color: var(--interactive); }
+    .exp-tag.mike { background: rgba(194,220,128,0.22); color: #5a8a10; }
+    .exp-purpose { flex: 1; font-size: 13px; color: var(--fg); }
+    .exp-amount-val { font-family: var(--font-serif); font-size: 15px; font-weight: 700; color: var(--fg); white-space: nowrap; }
+    .exp-curr { font-size: 11px; color: var(--muted-fg); margin-left: 2px; }
+    .exp-del { background: none; border: none; color: var(--muted-fg); font-size: 15px; cursor: pointer; padding: 0; }
+    .expense-summary {
+      margin: 12px 20px 20px;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, #F8EBF2 0%, #EDD9E5 100%);
+      border: 1px solid #E0C8D5;
+      border-radius: var(--radius-md);
+    }
+    .exp-sum-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      margin-bottom: 10px;
+    }
+    .exp-sum-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(61,32,48,0.07);
+      font-size: 13px;
+    }
+    .exp-sum-row:last-child { border-bottom: none; }
+    .exp-sum-val { font-family: var(--font-serif); font-weight: 700; font-size: 15px; color: var(--fg); }
+
+    /* USJ info card */
+    .usj-info-wrap {
+      margin: 0 20px 4px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      color: white;
+    }
+    .usj-info-section { margin-bottom: 14px; }
+    .usj-info-section:last-child { margin-bottom: 0; }
+    .usj-info-label {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 6px;
+    }
+    .usj-info-val {
+      font-size: 13px;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.6;
+    }
+    .usj-info-val strong { color: #FFD700; }
+    .usj-info-badge {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 10px;
+      background: #FFD700;
+      color: #1a1a2e;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    /* Quick info grid */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 16px 20px 0;
+    }
+    .info-cell {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .ic-overline {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .ic-value {
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.2;
+      color: var(--fg);
+    }
+    .ic-sub {
+      font-size: 11px;
+      color: var(--muted-fg);
+      margin-top: 3px;
+    }
+
+    /* Flight strip */
+    .flight-strip {
+      margin: 16px 20px 0;
+      background: var(--muted-bg);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+    }
+    .flight-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .flight-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .flight-row:first-child { padding-top: 0; }
+    .fr-code {
+      font-family: var(--font-serif);
+      font-size: 15px;
+      font-weight: 600;
+      min-width: 52px;
+      color: var(--fg);
+    }
+    .fr-route {
+      flex: 1;
+      font-size: 12px;
+      color: var(--muted-fg);
+      padding: 0 10px;
+    }
+    .fr-time {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--fg);
+    }
+    .fr-time .accent { color: var(--interactive); }
+
+    /* ══════════════════════
+       PAGE HEADER
+       ══════════════════════ */
+    .page-header {
+      padding: 36px 20px 20px;
+    }
+    .page-header .overline {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .page-header h2 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--fg);
+    }
+    .page-header h2 em {
+      font-style: italic;
+      color: var(--primary);
+    }
+    /* hide gold-line in botanical */
+    .gold-line { display: none; }
+
+    /* ══════════════════════
+       DAY TABS
+       ══════════════════════ */
+    .day-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 0 20px 16px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .day-tabs::-webkit-scrollbar { display: none; }
+    .day-tab {
+      flex-shrink: 0;
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: var(--white);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--fg);
+      opacity: 0.55;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+    }
+    .day-tab.active {
+      background: var(--fg);
+      color: var(--bg);
+      border-color: var(--fg);
+      opacity: 1;
+    }
+    .day-tab::after { display: none; }
+
+    .day-content { display: none; }
+    .day-content.active { display: block; }
+
+    /* Day header */
+    .day-header {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin: 0 20px 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .day-header .overline { margin-bottom: 4px; }
+    .day-title {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--fg);
+    }
+    .day-desc {
+      font-size: 13px;
+      color: var(--muted-fg);
+      line-height: 1.55;
+    }
+
+    /* Timeline */
+    .timeline { padding: 0 20px 20px; }
+    .tl-item {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 10px;
+    }
+    .tl-time-col {
+      width: 68px;
+      flex-shrink: 0;
+      padding: 14px 0 0;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      color: var(--primary);
+      font-weight: 600;
+      line-height: 1.4;
+      text-align: right;
+    }
+    .tl-body {
+      flex: 1;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .tl-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--fg);
+    }
+    .tl-desc {
+      font-size: 12px;
+      color: var(--muted-fg);
+      line-height: 1.55;
+    }
+    .tl-desc strong { color: var(--fg); font-weight: 600; }
+    .tl-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .tl-tag {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--muted-bg);
+      color: var(--muted-fg);
+    }
+    .tl-tag.gold { background: rgba(194,220,128,0.3); color: #4a6a20; }
+    .tl-tag.dark { background: var(--interactive); color: #fff; }
+
+    /* Checklist */
+    .check-section { padding: 0 20px 20px; }
+    .check-section-header {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      font-weight: 600;
+      margin-bottom: 10px;
+      padding-top: 4px;
+    }
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: var(--shadow-sm);
+    }
+    .check-item:active { transform: scale(0.98); }
+    .check-item.checked { opacity: 0.5; }
+    .check-item.checked .check-text { text-decoration: line-through; }
+    .check-box {
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.25s ease;
+      background: var(--white);
+    }
+    .check-item.checked .check-box {
+      background: var(--interactive);
+      border-color: var(--interactive);
+    }
+    .check-tick { display: none; color: var(--white); font-size: 11px; }
+    .check-text { font-size: 13px; font-weight: 500; flex: 1; }
+    .check-sub { font-size: 11px; color: var(--muted-fg); margin-top: 1px; }
+
+    /* ══════════════════════
+       PLACES PAGE
+       ══════════════════════ */
+    .cat-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 0 20px 16px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .cat-tabs::-webkit-scrollbar { display: none; }
+    .cat-tab {
+      flex-shrink: 0;
+      padding: 7px 16px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: var(--white);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--fg);
+      opacity: 0.55;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+    }
+    .cat-tab.active {
+      background: var(--fg);
+      color: var(--bg);
+      border-color: var(--fg);
+      opacity: 1;
+    }
+    .cat-tab::after { display: none; }
+
+    .cat-content { display: none; }
+    .cat-content.active { display: block; }
+
+    /* Place cards — botanical card style */
+    .place-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      margin: 0 20px 12px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
+    }
+    .place-card:active { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .place-card.featured {
+      border-color: rgba(196,132,156,0.4);
+      background: #FDF5F8;
+    }
+    .place-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+    .place-glyph { font-size: 24px; flex-shrink: 0; }
+    .place-name {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 2px;
+      color: var(--fg);
+    }
+    .place-jp {
+      font-size: 11px;
+      color: var(--primary);
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .place-desc {
+      font-size: 12px;
+      color: var(--muted-fg);
+      line-height: 1.6;
+    }
+    .place-desc strong { color: var(--fg); font-weight: 600; }
+    .place-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .place-badge {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--muted-bg);
+      color: var(--muted-fg);
+    }
+    .place-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--interactive);
+      text-decoration: none;
+      letter-spacing: 0.02em;
+    }
+
+    /* Alert banner */
+    .info-banner {
+      margin: 0 20px 12px;
+      padding: 14px 16px;
+      background: #FDF0F4;
+      border: 1px solid #E8B4C4;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--muted-fg);
+      line-height: 1.6;
+    }
+    .info-banner strong { color: var(--fg); font-weight: 600; }
+
+    /* Sub-shop rows */
+    .shop-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+      color: var(--fg);
+      transition: all 0.25s ease;
+    }
+    .shop-row:last-child { border-bottom: none; }
+    .shop-row:hover .shop-arrow { color: var(--primary); transform: translateX(3px); }
+    .shop-icon { font-size: 18px; flex-shrink: 0; }
+    .shop-name { flex: 1; font-size: 13px; font-weight: 600; }
+    .shop-sub { font-size: 11px; color: var(--muted-fg); margin-top: 1px; }
+    .shop-arrow {
+      font-size: 16px;
+      color: var(--border);
+      transition: all 0.3s ease;
+    }
+
+    /* Category section title */
+    .cat-section-title {
+      padding: 12px 20px 8px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* Strategy banner */
+    .strategy-banner {
+      margin: 0 20px 12px;
+      padding: 16px 18px;
+      background: linear-gradient(135deg, #F8EBF2 0%, #EDD9E5 100%);
+      border: 1px solid #E8CEDB;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--fg);
+      line-height: 1.7;
+    }
+    .strategy-banner strong { color: var(--interactive); font-weight: 600; }
+    .strategy-banner .gold-text { color: #4a6a20; font-weight: 600; }
+
+    /* ══════════════════════
+       MAP PAGE
+       ══════════════════════ */
+    .map-embed {
+      margin: 0 20px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-md);
+    }
+    .map-embed iframe {
+      display: block;
+      width: 100%;
+      height: 300px;
+      border: none;
+    }
+    .map-section-title {
+      padding: 16px 20px 8px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .map-pin {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 20px;
+      text-decoration: none;
+      color: var(--fg);
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin: 0 20px 8px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.25s ease;
+    }
+    .map-pin:active { transform: scale(0.98); }
+    .pin-dot {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: var(--muted-bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .map-pin-info { flex: 1; }
+    .map-pin-name { font-size: 13px; font-weight: 600; }
+    .map-pin-addr { font-size: 11px; color: var(--muted-fg); margin-top: 1px; }
+    .map-pin-arrow {
+      font-size: 18px;
+      color: var(--primary);
+      opacity: 0.5;
+    }
+
+    /* ══════════════════════
+       INFO PAGE
+       ══════════════════════ */
+    .info-sec-title {
+      padding: 16px 20px 8px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .flight-display-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin: 0 20px 12px;
+      box-shadow: var(--shadow-sm);
+    }
+    .fdc-overline {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--interactive);
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .fdc-route {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .fdc-city {
+      font-family: var(--font-serif);
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .fdc-iata { font-size: 10px; color: var(--primary); font-weight: 600; margin-top: 3px; }
+    .fdc-arrow { color: var(--border); font-size: 18px; flex: 1; text-align: center; }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row-label { color: var(--muted-fg); font-size: 12px; }
+    .info-row-value { font-weight: 600; }
+    .info-row-value.gold { color: var(--interactive); }
+
+    .hotel-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin: 0 20px 12px;
+      box-shadow: var(--shadow-sm);
+    }
+    .hotel-name {
+      font-family: var(--font-serif);
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+    .hotel-sub {
+      font-style: italic;
+      font-family: var(--font-serif);
+      font-size: 13px;
+      color: var(--primary);
+      margin-bottom: 16px;
+    }
+
+    .tip-row {
+      display: flex;
+      gap: 14px;
+      padding: 14px 20px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin: 0 20px 8px;
+      font-size: 13px;
+      line-height: 1.6;
+      box-shadow: var(--shadow-sm);
+    }
+    .tip-icon-col { flex-shrink: 0; font-size: 16px; padding-top: 1px; }
+    .tip-body { flex: 1; color: var(--muted-fg); }
+    .tip-body strong { color: var(--fg); font-weight: 600; }
+
+    /* ══════════════════════
+       HISTORY PAGE
+       ══════════════════════ */
+    .history-add-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 16px 20px;
+      padding: 14px;
+      background: var(--interactive);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius-pill);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      width: calc(100% - 40px);
+      box-shadow: var(--shadow-btn);
+      transition: all 0.3s ease;
+    }
+    .history-add-btn:active { transform: scale(0.98); }
+
+    .trip-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin: 0 20px 14px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
+    }
+    .trip-card:active { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .trip-card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 18px 14px;
+    }
+    .trip-flag {
+      width: 52px; height: 52px;
+      border-radius: var(--radius-md);
+      background: var(--muted-bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      flex-shrink: 0;
+    }
+    .trip-meta { flex: 1; }
+    .trip-name {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--fg);
+      margin-bottom: 2px;
+    }
+    .trip-dates {
+      font-size: 12px;
+      color: var(--muted-fg);
+      margin-bottom: 4px;
+    }
+    .trip-status {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      padding: 2px 10px;
+      border-radius: var(--radius-pill);
+    }
+    .trip-status.upcoming { background: #FAEDF2; color: var(--interactive); }
+    .trip-status.completed { background: var(--muted-bg); color: var(--muted-fg); }
+    .trip-status.planning { background: #FEF3E9; color: var(--interactive); }
+    .trip-highlights {
+      padding: 0 18px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .trip-highlight-tag {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--muted-bg);
+      color: var(--muted-fg);
+    }
+    .trip-card-footer {
+      border-top: 1px solid var(--border);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .trip-stat {
+      text-align: center;
+    }
+    .trip-stat-num {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--fg);
+      line-height: 1;
+    }
+    .trip-stat-label {
+      font-size: 10px;
+      color: var(--muted-fg);
+      margin-top: 2px;
+    }
+    .trip-delete-btn {
+      background: none;
+      border: none;
+      color: var(--muted-fg);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+      opacity: 0.4;
+      transition: opacity 0.2s;
+    }
+    .trip-delete-btn:active { opacity: 1; }
+
+    /* Empty state */
+    .history-empty {
+      text-align: center;
+      padding: 48px 32px;
+      color: var(--muted-fg);
+    }
+    .history-empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+    .history-empty-text { font-size: 14px; line-height: 1.6; }
+
+    /* Modal overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(45,58,49,0.5);
+      z-index: 500;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet {
+      background: var(--bg);
+      border-radius: 24px 24px 0 0;
+      width: 100%;
+      max-width: 480px;
+      padding: 0 0 max(20px, env(safe-area-inset-bottom));
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.35s cubic-bezier(0.25,0.46,0.45,0.94);
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    .modal-handle {
+      width: 40px; height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 12px auto 20px;
+    }
+    .modal-title {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 700;
+      padding: 0 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-form { padding: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--fg);
+      outline: none;
+      transition: border-color 0.25s;
+    }
+    .form-input:focus { border-color: var(--primary); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-select {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--fg);
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      padding: 0 20px;
+    }
+    .btn-primary {
+      flex: 1;
+      padding: 14px;
+      background: var(--fg);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius-pill);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn-secondary {
+      padding: 14px 20px;
+      background: none;
+      color: var(--muted-fg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* Stats bar */
+    .history-stats {
+      display: flex;
+      gap: 0;
+      margin: 0 20px 16px;
+      background: linear-gradient(135deg, #F8EBF2 0%, #EDD9E5 100%);
+      border: 1px solid #E8CEDB;
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      justify-content: space-between;
+    }
+    .hstat { text-align: center; }
+    .hstat-num {
+      font-family: var(--font-serif);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--fg);
+      line-height: 1;
+    }
+    .hstat-label {
+      font-size: 10px;
+      color: var(--muted-fg);
+      margin-top: 4px;
+      letter-spacing: 0.06em;
+    }
+  </style>
+</head>
+<body>
+
+
+<!-- ══════════════════════════════
+     PAGES
+     ══════════════════════════════ -->
+
+<!-- ── 旅遊記錄 ── -->
+<div class="page" id="page-history">
+  <div class="page-header">
+    <div class="page-tag" style="font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--primary);margin-bottom:6px;">✦ Travel Log</div>
+    <h2 style="font-size:28px;font-weight:700;font-family:var(--font-serif);color:var(--fg);">旅遊<em style="font-style:italic;color:var(--primary);">記錄</em></h2>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="history-stats" id="history-stats">
+    <div class="hstat"><div class="hstat-num" id="stat-trips">1</div><div class="hstat-label">趟旅程</div></div>
+    <div class="hstat"><div class="hstat-num" id="stat-countries">1</div><div class="hstat-label">個國家</div></div>
+    <div class="hstat"><div class="hstat-num" id="stat-days">4</div><div class="hstat-label">旅遊天數</div></div>
+  </div>
+
+  <!-- Add button -->
+  <button class="history-add-btn" onclick="openModal()">＋ 新增旅程</button>
+
+  <!-- Trip list -->
+  <div id="trip-list"></div>
+
+  <!-- Empty state (hidden when trips exist) -->
+  <div class="history-empty" id="history-empty" style="display:none;">
+    <div class="history-empty-icon">🗺</div>
+    <div class="history-empty-text">還沒有旅遊記錄<br>點上方「新增旅程」開始記錄你的旅行故事</div>
+  </div>
+</div>
+
+<!-- Add Trip Modal -->
+<div class="modal-overlay" id="trip-modal" onclick="handleOverlayClick(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">新增旅程 ✈</div>
+    <div class="modal-form">
+      <div class="form-group">
+        <label class="form-label">目的地城市</label>
+        <input class="form-input" id="f-city" type="text" placeholder="例：巴黎、首爾、東京">
+      </div>
+      <div class="form-group">
+        <label class="form-label">國家 + 旗幟 emoji</label>
+        <div class="form-row">
+          <input class="form-input" id="f-country" type="text" placeholder="例：法國">
+          <input class="form-input" id="f-flag" type="text" placeholder="🇫🇷">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">日期</label>
+        <div class="form-row">
+          <input class="form-input" id="f-start" type="date">
+          <input class="form-input" id="f-end" type="date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">狀態</label>
+        <select class="form-select" id="f-status">
+          <option value="upcoming">即將出發 🌱</option>
+          <option value="completed">已完成 ✓</option>
+          <option value="planning">規劃中 💭</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">亮點標籤（用逗號分隔）</label>
+        <input class="form-input" id="f-tags" type="text" placeholder="例：美食、購物、寺廟、海灘">
+      </div>
+      <div class="modal-actions" style="margin-bottom:12px;">
+        <button class="btn-secondary" onclick="closeModal()">取消</button>
+        <button class="btn-primary" onclick="saveTrip()">儲存旅程</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 首頁 ── -->
+<div class="page active" id="page-home">
+
+  <div class="hero">
+    <div class="hero-overline">
+      <span class="gold-line"></span>
+      Kyoto Journey &nbsp;/&nbsp; Vol. 01
+    </div>
+    <h1 class="hero-title">
+      京都<br><em>2026</em>
+    </h1>
+    <p class="hero-sub">May 28 — June 1 &nbsp;·&nbsp; Yuhsuan & Partner</p>
+  </div>
+
+  <div class="countdown-section">
+    <div class="cd-left">
+      <div class="cd-number" id="countdown-days"><span class="accent">—</span></div>
+    </div>
+    <div class="cd-right">
+      <div class="cd-label">✈️ Distance to Departure</div>
+      <div class="cd-unit" id="countdown-text">Days Until Takeoff</div>
+      <div class="cd-date">Thu, May 28 · CI172 · 14:20</div>
+    </div>
+  </div>
+
+  <!-- ☀️ 天氣預報 -->
+  <div class="weather-section">
+    <div class="tips-header"><span class="gold-line"></span>☀️ Weather Forecast</div>
+    <div class="weather-scroll">
+      <div class="weather-card today-card">
+        <div class="weather-date">5/28</div>
+        <div class="weather-day">Thu</div>
+        <div class="weather-icon">☀️</div>
+        <div class="weather-high">28°</div>
+        <div class="weather-low">20°</div>
+        <div class="weather-desc">晴天</div>
+      </div>
+      <div class="weather-card">
+        <div class="weather-date">5/29</div>
+        <div class="weather-day">Fri</div>
+        <div class="weather-icon">⛅</div>
+        <div class="weather-high">27°</div>
+        <div class="weather-low">19°</div>
+        <div class="weather-desc">晴時多雲</div>
+      </div>
+      <div class="weather-card">
+        <div class="weather-date">5/30</div>
+        <div class="weather-day">Sat</div>
+        <div class="weather-icon">🌤</div>
+        <div class="weather-high">26°</div>
+        <div class="weather-low">18°</div>
+        <div class="weather-desc">多雲</div>
+      </div>
+      <div class="weather-card">
+        <div class="weather-date">5/31</div>
+        <div class="weather-day">Sun</div>
+        <div class="weather-icon">🌦</div>
+        <div class="weather-high">24°</div>
+        <div class="weather-low">17°</div>
+        <div class="weather-desc">偶陣雨</div>
+      </div>
+      <div class="weather-card">
+        <div class="weather-date">6/01</div>
+        <div class="weather-day">Mon</div>
+        <div class="weather-icon">🌧</div>
+        <div class="weather-high">23°</div>
+        <div class="weather-low">17°</div>
+        <div class="weather-desc">陣雨</div>
+      </div>
+    </div>
+    <div class="weather-note">📍 京都典型初夏天氣，請出發前確認最新預報</div>
+  </div>
+
+  <!-- 🚇 地鐵圖快速開啟 -->
+  <div class="subway-btn-wrap">
+    <a class="subway-btn" href="https://www.city.kyoto.lg.jp/kotsu/cmsfiles/contents/0000019/19770/kyoto_subway_map.pdf" target="_blank">
+      <span class="subway-btn-icon">🚇</span>
+      <div class="subway-btn-body">
+        <div class="subway-btn-title">京都地鐵路線圖</div>
+        <div class="subway-btn-sub">烏丸線 × 東西線 · 官方 PDF</div>
+      </div>
+      <span class="subway-btn-arrow">›</span>
+    </a>
+  </div>
+
+  <!-- ✈️ 航班 Dashboard — 左右並排 -->
+  <div class="flight-dashboard">
+    <div class="flt-card outbound">
+      <div class="flt-label">去程 · Outbound</div>
+      <div class="flt-no">CI172 <span class="flt-plane">✈️</span></div>
+      <div class="flt-route">台北桃園 T2<br>→ 大阪關西 T1</div>
+      <div class="flt-time">14:20 → 18:05</div>
+      <div class="flt-date">Thu, May 28, 2026</div>
+    </div>
+    <div class="flt-card inbound">
+      <div class="flt-label">回程 · Return</div>
+      <div class="flt-no">CI173 <span class="flt-plane">🛬</span></div>
+      <div class="flt-route">大阪關西 T1<br>→ 台北桃園 T2</div>
+      <div class="flt-time">19:05 → 21:10</div>
+      <div class="flt-date">Mon, June 1, 2026</div>
+    </div>
+  </div>
+
+  <!-- 🏨 住宿 -->
+  <div style="margin:12px 20px 0; background:var(--muted-bg); border-radius:var(--radius-md); padding:16px; border:1px solid var(--border);">
+    <div style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--primary); font-weight:600; margin-bottom:8px;">🏨 住宿</div>
+    <div style="font-family:var(--font-serif); font-size:17px; font-weight:700; margin-bottom:4px; color:var(--fg);">御宿野乃 京都七条</div>
+    <div style="font-size:12px; color:var(--muted-fg); line-height:1.6;">
+      京都七条 · 天然溫泉<br>
+      Check-in 5/28（15:00 後）· Check-out 6/1（11:00 前）
+    </div>
+  </div>
+
+  <!-- 💡 每日主題 Tips -->
+  <div class="tips-section" style="margin-bottom:24px;">
+    <div class="tips-header"><span class="gold-line"></span>💡 每日行程主題</div>
+    <div class="tips-scroll">
+      <div class="tip-day-card" onclick="goToDay('day1')">
+        <div class="tip-day-num">5/28<span>✈️</span></div>
+        <div class="tip-day-body">
+          <div class="tip-day-title">抵達日 — Arrival</div>
+          <div class="tip-day-hint">飛往大阪 · JR Haruka 入住 · 第一碗京都拉麵</div>
+        </div>
+        <div class="tip-day-arrow">›</div>
+      </div>
+      <div class="tip-day-card" onclick="goToDay('day2')">
+        <div class="tip-day-num">5/29<span>🎢</span></div>
+        <div class="tip-day-body">
+          <div class="tip-day-title">大阪環球影城 — USJ</div>
+          <div class="tip-day-hint">任天堂世界 · 哈利波特 · Minecart 快速通關</div>
+        </div>
+        <div class="tip-day-arrow">›</div>
+      </div>
+      <div class="tip-day-card" onclick="goToDay('day3')">
+        <div class="tip-day-num">5/30<span>⛩</span></div>
+        <div class="tip-day-body">
+          <div class="tip-day-title">東山文化路線 — Higashiyama</div>
+          <div class="tip-day-hint">清水寺 · 二三年坂 · 抹茶午餐 · 高台寺 · 先斗町晚餐</div>
+        </div>
+        <div class="tip-day-arrow">›</div>
+      </div>
+      <div class="tip-day-card" onclick="goToDay('day4')">
+        <div class="tip-day-num">5/31<span>🛍</span></div>
+        <div class="tip-day-body">
+          <div class="tip-day-title">文化 × 購物 — Shop & Explore</div>
+          <div class="tip-day-hint">銀座白石 · 下午茶 · Kyoto Loft · % Arabica · agete</div>
+        </div>
+        <div class="tip-day-arrow">›</div>
+      </div>
+      <div class="tip-day-card" onclick="goToDay('day5')">
+        <div class="tip-day-num">6/01<span>🏠</span></div>
+        <div class="tip-day-body">
+          <div class="tip-day-title">返台日 — Departure</div>
+          <div class="tip-day-hint">退房 · 大阪道頓堀 · 關西機場 CI173</div>
+        </div>
+        <div class="tip-day-arrow">›</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── 行程 ── -->
+<div class="page" id="page-itinerary">
+  <div class="page-header">
+    <div class="overline"><span class="gold-line"></span>🗓 Itinerary</div>
+    <h2>📅 每日<em>行程</em></h2>
+  </div>
+
+  <div class="day-tabs">
+    <button class="day-tab active" onclick="switchDay('day1',this)">5/28<span class="tab-dow">Thu</span></button>
+    <button class="day-tab" onclick="switchDay('day2',this)">5/29<span class="tab-dow">Fri</span></button>
+    <button class="day-tab" onclick="switchDay('day3',this)">5/30<span class="tab-dow">Sat</span></button>
+    <button class="day-tab" onclick="switchDay('day4',this)">5/31<span class="tab-dow">Sun</span></button>
+    <button class="day-tab" onclick="switchDay('day5',this)">6/01<span class="tab-dow">Mon</span></button>
+  </div>
+
+  <!-- Day 1 -->
+  <div class="day-content" id="day1">
+    <div class="day-header">
+      <div class="overline"><span class="gold-line"></span>✈️ Day One · Thursday</div>
+      <div class="day-title">🛬 抵達日 — <em>Arrival</em></div>
+      <div class="day-desc">飛往大阪，JR Haruka 前往京都，入住溫泉旅館，品嚐第一碗京都拉麵</div>
+    </div>
+    <div class="day-map-section">
+      <div class="day-map-header">📍 今日路線 — KIX → 京都</div>
+      <div id="map-day1" class="day-map-container"></div>
+      <a id="gmaps-day1" href="#" target="_blank" class="day-map-route-btn">🗺 在 Google Maps 查看完整路線</a>
+    </div>
+    <div class="timeline" id="timeline-day1"></div>
+    <div class="tl-add-wrap">
+      <button class="tl-add-btn" onclick="toggleAddForm('day1')">＋ 新增行程</button>
+      <div class="tl-add-form" id="add-form-day1" style="display:none">
+        <div class="tl-add-form-row">
+          <input class="tl-add-time" type="time" id="add-time-day1" placeholder="時間">
+          <input class="tl-add-name" type="text" id="add-name-day1" placeholder="行程名稱...">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="tl-add-confirm" onclick="confirmAddItem('day1')">確認新增</button>
+          <button class="tl-add-cancel" onclick="toggleAddForm('day1')">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 2 -->
+  <div class="day-content" id="day2">
+    <div class="day-header">
+      <div class="overline"><span class="gold-line"></span>🎢 Day Two · Friday</div>
+      <div class="day-title">🌟 大阪環球影城 — <em>USJ</em></div>
+      <div class="day-desc">早起出發！任天堂世界 + 哈利波特魔法世界，傍晚泡溫泉回來</div>
+    </div>
+    <div class="day-map-section">
+      <div class="day-map-header">📍 今日路線 — 京都 → USJ</div>
+      <div id="map-day2" class="day-map-container"></div>
+      <a id="gmaps-day2" href="#" target="_blank" class="day-map-route-btn">🗺 在 Google Maps 查看完整路線</a>
+    </div>
+    <div class="timeline" id="timeline-day2"></div>
+    <div class="tl-add-wrap">
+      <button class="tl-add-btn" onclick="toggleAddForm('day2')">＋ 新增行程</button>
+      <div class="tl-add-form" id="add-form-day2" style="display:none">
+        <div class="tl-add-form-row">
+          <input class="tl-add-time" type="time" id="add-time-day2" placeholder="時間">
+          <input class="tl-add-name" type="text" id="add-name-day2" placeholder="行程名稱...">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="tl-add-confirm" onclick="confirmAddItem('day2')">確認新增</button>
+          <button class="tl-add-cancel" onclick="toggleAddForm('day2')">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 3 -->
+  <div class="day-content" id="day3">
+    <div class="day-header">
+      <div class="overline"><span class="gold-line"></span>⛩ Day Three · Saturday</div>
+      <div class="day-title">🏯 東山文化路線 — <em>Higashiyama</em></div>
+      <div class="day-desc">清水寺、石板坡道小店、抹茶甜點，京都最精華的傳統氛圍</div>
+    </div>
+    <div class="day-map-section">
+      <div class="day-map-header">📍 今日路線 — 清水寺 → 二三年坂 → 高台寺 → 寺町</div>
+      <div id="map-day3" class="day-map-container"></div>
+      <a id="gmaps-day3" href="#" target="_blank" class="day-map-route-btn">🗺 在 Google Maps 查看完整路線</a>
+    </div>
+    <div class="timeline" id="timeline-day3"></div>
+    <div class="tl-add-wrap">
+      <button class="tl-add-btn" onclick="toggleAddForm('day3')">＋ 新增行程</button>
+      <div class="tl-add-form" id="add-form-day3" style="display:none">
+        <div class="tl-add-form-row">
+          <input class="tl-add-time" type="time" id="add-time-day3" placeholder="時間">
+          <input class="tl-add-name" type="text" id="add-name-day3" placeholder="行程名稱...">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="tl-add-confirm" onclick="confirmAddItem('day3')">確認新增</button>
+          <button class="tl-add-cancel" onclick="toggleAddForm('day3')">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 4 -->
+  <div class="day-content" id="day4">
+    <div class="day-header">
+      <div class="overline"><span class="gold-line"></span>🛍 Day Four · Sunday</div>
+      <div class="day-title">🎌 文化 × 購物 — <em>Shop &amp; Explore</em></div>
+      <div class="day-desc">高島屋銀座白石・下午茶・Kyoto Loft・% Arabica・大丸京都 agete 輕奢珠寶</div>
+    </div>
+    <div class="day-map-section">
+      <div class="day-map-header">📍 今日路線 — 高島屋 → mina京都 → 大丸京都</div>
+      <div id="map-day4" class="day-map-container"></div>
+      <a id="gmaps-day4" href="#" target="_blank" class="day-map-route-btn">🗺 在 Google Maps 查看完整路線</a>
+    </div>
+    <div class="timeline" id="timeline-day4"></div>
+    <div class="tl-add-wrap">
+      <button class="tl-add-btn" onclick="toggleAddForm('day4')">＋ 新增行程</button>
+      <div class="tl-add-form" id="add-form-day4" style="display:none">
+        <div class="tl-add-form-row">
+          <input class="tl-add-time" type="time" id="add-time-day4" placeholder="時間">
+          <input class="tl-add-name" type="text" id="add-name-day4" placeholder="行程名稱...">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="tl-add-confirm" onclick="confirmAddItem('day4')">確認新增</button>
+          <button class="tl-add-cancel" onclick="toggleAddForm('day4')">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day 5 -->
+  <div class="day-content" id="day5">
+    <div class="day-header">
+      <div class="overline"><span class="gold-line"></span>🏠 Day Five · Monday</div>
+      <div class="day-title">✈️ 返台日 — <em>Departure</em></div>
+      <div class="day-desc">退房後仍有充裕時間，大阪道頓堀午餐，再悠閒前往機場</div>
+    </div>
+    <div class="day-map-section">
+      <div class="day-map-header">📍 今日路線 — 京都 → 大阪 → KIX</div>
+      <div id="map-day5" class="day-map-container"></div>
+      <a id="gmaps-day5" href="#" target="_blank" class="day-map-route-btn">🗺 在 Google Maps 查看完整路線</a>
+    </div>
+    <div class="timeline" id="timeline-day5"></div>
+    <div class="tl-add-wrap">
+      <button class="tl-add-btn" onclick="toggleAddForm('day5')">＋ 新增行程</button>
+      <div class="tl-add-form" id="add-form-day5" style="display:none">
+        <div class="tl-add-form-row">
+          <input class="tl-add-time" type="time" id="add-time-day5" placeholder="時間">
+          <input class="tl-add-name" type="text" id="add-name-day5" placeholder="行程名稱...">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="tl-add-confirm" onclick="confirmAddItem('day5')">確認新增</button>
+          <button class="tl-add-cancel" onclick="toggleAddForm('day5')">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── 景點美食 ── -->
+<div class="page" id="page-places">
+  <div class="page-header">
+    <div class="overline"><span class="gold-line"></span>🗺 Places</div>
+    <h2>🏛 景點 · 美食 · <em>購物</em></h2>
+  </div>
+
+  <div class="cat-tabs">
+    <button class="cat-tab active" onclick="switchCat('cat-temple',this)">⛩ 寺廟</button>
+    <button class="cat-tab" onclick="switchCat('cat-food',this)">🍵 美食</button>
+    <button class="cat-tab" onclick="switchCat('cat-shop',this)">🛍 購物</button>
+    <button class="cat-tab" onclick="switchCat('cat-ring',this)">💍 婚戒</button>
+    <button class="cat-tab" onclick="switchCat('cat-bf',this)">🎮 男友</button>
+    <button class="cat-tab" onclick="switchCat('cat-video',this)">🎬 影片</button>
+  </div>
+
+  <!-- 寺廟 -->
+  <div class="cat-content active" id="cat-temple">
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">⛩️</div>
+        <div>
+          <div class="place-name">伏見稻荷大社</div>
+          <div class="place-jp">伏見稲荷大社</div>
+        </div>
+      </div>
+      <div class="place-desc">千本鳥居的震撼感無與倫比。清晨 7 點前到，幾乎沒有人潮。爬到奧社來回約 2 小時。</div>
+      <div class="place-meta">
+        <span class="place-badge">JR 稲荷駅徒步即達</span>
+        <span class="place-badge">24H 免費</span>
+        <span class="place-badge">Day 3</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=伏見稲荷大社" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🏯</div>
+        <div>
+          <div class="place-name">清水寺</div>
+          <div class="place-jp">清水寺</div>
+        </div>
+      </div>
+      <div class="place-desc">清水舞台俯瞰整個京都，早晨氣氛最好。周邊二年坂、三年坂是最美的購物坡道。</div>
+      <div class="place-meta">
+        <span class="place-badge">巴士 206 清水道</span>
+        <span class="place-badge">06:00–18:00</span>
+        <span class="place-badge">¥400</span>
+        <span class="place-badge">Day 3</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=清水寺+京都" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🌸</div>
+        <div>
+          <div class="place-name">祇園・花見小路</div>
+          <div class="place-jp">祇園・花見小路</div>
+        </div>
+      </div>
+      <div class="place-desc">夜晚燈光打在格子門上，最有京都感的一條巷子。有機會看到藝妓出行。</div>
+      <div class="place-meta">
+        <span class="place-badge">四条河原町附近</span>
+        <span class="place-badge">全天 免費</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=花見小路+京都" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🪷</div>
+        <div>
+          <div class="place-name">高台寺</div>
+          <div class="place-jp">高台寺</div>
+        </div>
+      </div>
+      <div class="place-desc">豐臣秀吉正室所建，枯山水庭園靜謐優雅。東山漫步路線必訪。</div>
+      <div class="place-meta">
+        <span class="place-badge">東山區</span>
+        <span class="place-badge">¥600</span>
+        <span class="place-badge">Day 3</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=高台寺+京都" target="_blank">Google Maps →</a>
+    </div>
+  </div>
+
+  <!-- 美食 -->
+  <div class="cat-content" id="cat-food">
+    <div class="info-banner"><strong>抹茶控必看</strong> — 京都抹茶是日本最高品質。伊藤久右衛門 + 茶寮都路里，兩家都在祇園附近，Day 4 全吃到。</div>
+    <div class="place-card featured">
+      <div class="place-header">
+        <div class="place-glyph">🍵</div>
+        <div>
+          <div class="place-name">伊藤久右衛門 祇園店</div>
+          <div class="place-jp">伊藤久右衛門</div>
+        </div>
+      </div>
+      <div class="place-desc"><strong>抹茶拉麵 + 抹茶聖代</strong>同場，視覺系打卡必訪。帶走土產也很多選擇。</div>
+      <div class="place-meta">
+        <span class="place-badge">祇園四条</span>
+        <span class="place-badge">10:00–20:00</span>
+        <span class="place-badge">¥1,500 up</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=伊藤久右衛門+祇園店" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🍡</div>
+        <div>
+          <div class="place-name">茶寮 都路里 祇園本店</div>
+          <div class="place-jp">茶寮都路里</div>
+        </div>
+      </div>
+      <div class="place-desc">抹茶蕨餅、抹茶聖代、寒天，京都抹茶甜點老字號，排隊但值得。</div>
+      <div class="place-meta">
+        <span class="place-badge">祇園四条</span>
+        <span class="place-badge">¥1,200 up</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=茶寮都路里+祇園" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🍜</div>
+        <div>
+          <div class="place-name">第一旭・新福菜館</div>
+          <div class="place-jp">第一旭・新福菜館</div>
+        </div>
+      </div>
+      <div class="place-desc">京都駅旁超知名拉麵老店，兩家相鄰，深夜也開。第一晚抵達的完美選擇。</div>
+      <div class="place-meta">
+        <span class="place-badge">JR 京都駅近</span>
+        <span class="place-badge">早~深夜</span>
+        <span class="place-badge">¥800</span>
+        <span class="place-badge">Day 1</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=第一旭+京都駅" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🥢</div>
+        <div>
+          <div class="place-name">錦市場 食べ歩き</div>
+          <div class="place-jp">錦市場</div>
+        </div>
+      </div>
+      <div class="place-desc">邊走邊吃！出汁玉子燒・漬物・串燒豆腐・章魚頭。「京都的廚房」。</div>
+      <div class="place-meta">
+        <span class="place-badge">四条烏丸</span>
+        <span class="place-badge">10:00–18:00</span>
+        <span class="place-badge">Day 4</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=錦市場+京都" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card featured">
+      <div class="place-header">
+        <div class="place-glyph">☕</div>
+        <div>
+          <div class="place-name">% Arabica 京都</div>
+          <div class="place-jp">% Arabica — 藤井大丸 1F</div>
+        </div>
+      </div>
+      <div class="place-desc">全球最受矚目的精品咖啡之一，發源自京都。Latte art 一流，咖啡豆嚴選自世界各地農場。必拍打卡點。</div>
+      <div class="place-meta">
+        <span class="place-badge">藤井大丸 1F</span>
+        <span class="place-badge">10:30–20:00</span>
+        <span class="place-badge">Day 4</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=%25Arabica+藤井大丸+京都" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🏮</div>
+        <div>
+          <div class="place-name">先斗町 晚餐</div>
+          <div class="place-jp">先斗町</div>
+        </div>
+      </div>
+      <div class="place-desc">鴨川河畔的窄小石板巷，居酒屋・割烹・京都料理林立。夏日川床料理最有情調，旅途收尾的完美選擇。</div>
+      <div class="place-meta">
+        <span class="place-badge">三条〜四条鴨川沿岸</span>
+        <span class="place-badge">17:00 起</span>
+        <span class="place-badge">Day 3</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=先斗町+京都" target="_blank">Google Maps →</a>
+    </div>
+  </div>
+
+  <!-- 購物 -->
+  <div class="cat-content" id="cat-shop">
+    <div class="place-card featured">
+      <div class="place-header">
+        <div class="place-glyph">🔪</div>
+        <div>
+          <div class="place-name">有次（Aritsugu）</div>
+          <div class="place-jp">有次 錦市場</div>
+        </div>
+      </div>
+      <div class="place-desc">1560 年創業。職人手工料理刀・銅鍋・料理模具，可刻名字。料理道具控的聖地，500+ 品項。</div>
+      <div class="place-meta">
+        <span class="place-badge">錦市場中段</span>
+        <span class="place-badge">10:00–17:00 週三休</span>
+        <span class="place-badge">刀 ¥5,000 up</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=有次+錦市場" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🏬</div>
+        <div>
+          <div class="place-name">高島屋 京都店</div>
+          <div class="place-jp">高島屋 京都店</div>
+        </div>
+      </div>
+      <div class="place-desc">agete 在本館 1F。B1 頂級食品館買抹茶零食・生菓子最好逛。</div>
+      <div class="place-meta">
+        <span class="place-badge">四条河原町</span>
+        <span class="place-badge">10:00–20:00</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=高島屋+京都店" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🏬</div>
+        <div>
+          <div class="place-name">大丸 京都店</div>
+          <div class="place-jp">大丸 京都店</div>
+        </div>
+      </div>
+      <div class="place-desc">日本生活雜貨・廚房用品選擇豐富，agete 也有專櫃，B1 食品館很好逛。</div>
+      <div class="place-meta">
+        <span class="place-badge">四条高倉</span>
+        <span class="place-badge">10:00–20:00</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=大丸京都店" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🪨</div>
+        <div>
+          <div class="place-name">二年坂・三年坂</div>
+          <div class="place-jp">二寧坂・産寧坂</div>
+        </div>
+      </div>
+      <div class="place-desc">清水寺通往祇園的石板坡道，天然礦石・瑪瑙飾品・京燒陶器店。逛一個下午都不夠。</div>
+      <div class="place-meta">
+        <span class="place-badge">清水寺周邊</span>
+        <span class="place-badge">10:00–18:00</span>
+        <span class="place-badge">Day 3</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=二年坂+三年坂+京都" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">✏️</div>
+        <div>
+          <div class="place-name">Kyoto Loft — mina京都</div>
+          <div class="place-jp">ロフト — ミーナ京都</div>
+        </div>
+      </div>
+      <div class="place-desc">設計文具・生活雜貨・季節限定選物，三層樓（4F–6F）超好逛。文青必訪，京都限定商品多。</div>
+      <div class="place-meta">
+        <span class="place-badge">mina京都 4F–6F</span>
+        <span class="place-badge">11:00–21:00</span>
+        <span class="place-badge">Day 4</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=ミーナ京都+ロフト" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🏙</div>
+        <div>
+          <div class="place-name">寺町京極商店街</div>
+          <div class="place-jp">寺町京極商店街</div>
+        </div>
+      </div>
+      <div class="place-desc">京都最長的室內拱廊商店街，藥妝・雜貨・文具・礦石飾品應有盡有。雨天也能盡情逛，全天候購物天堂。</div>
+      <div class="place-meta">
+        <span class="place-badge">河原町駅 近</span>
+        <span class="place-badge">10:00–20:00</span>
+        <span class="place-badge">Day 3</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=寺町京極商店街+京都" target="_blank">Google Maps →</a>
+    </div>
+  </div>
+
+  <!-- 婚戒 -->
+  <div class="cat-content" id="cat-ring">
+    <div class="info-banner"><strong>婚戒提醒</strong> — 訂製款需 2–3 個月，若有喜歡的款式記得詢問是否有現貨，或記下回台灣後訂製。</div>
+    <div class="place-card featured">
+      <div class="place-header">
+        <div class="place-glyph">🌿</div>
+        <div>
+          <div class="place-name">杢目金屋 京都四条店</div>
+          <div class="place-jp">杢目金屋</div>
+        </div>
+      </div>
+      <div class="place-desc">日本傳統「木目金」工藝婚戒，金屬層壓出木紋般紋路，全球唯一。和風獨特，有故事感。</div>
+      <div class="place-meta">
+        <span class="place-badge">京都四条附近</span>
+        <span class="place-badge">需預約</span>
+        <span class="place-badge">¥100,000 up</span>
+      </div>
+      <a class="place-link" href="https://www.mokumeganeya.com/shop/kyoto/" target="_blank">官網預約 →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">💎</div>
+        <div>
+          <div class="place-name">Garden 京都本店</div>
+          <div class="place-jp">garden 京都</div>
+        </div>
+      </div>
+      <div class="place-desc">日本最大級婚戒 Select Shop，80+ 品牌・6,000 種以上款式。適合還在選擇階段的人。</div>
+      <div class="place-meta">
+        <span class="place-badge">河原町駅 5 分</span>
+        <span class="place-badge">11:00–20:00</span>
+      </div>
+      <a class="place-link" href="https://garden-kyoto.com/" target="_blank">官網 →</a>
+    </div>
+
+    <div class="cat-section-title">💎 銀座白石 — 鑽石珠寶</div>
+    <div class="place-card featured">
+      <div class="place-header">
+        <div class="place-glyph">💎</div>
+        <div>
+          <div class="place-name">銀座白石（高島屋 2F）</div>
+          <div class="place-jp">銀座白石 — 鑽石・婚戒・輕奢</div>
+        </div>
+      </div>
+      <div class="place-desc">日本知名鑽石珠寶品牌，品質卓越、設計細膩。婚戒款式豐富，亦有輕奢首飾。位於京都高島屋 2F 寶飾・時計館，建議現場確認最新樓層。</div>
+      <div class="place-meta">
+        <span class="place-badge">京都高島屋 2F</span>
+        <span class="place-badge">10:00–20:00</span>
+        <span class="place-badge">Day 4</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=京都高島屋" target="_blank">Google Maps →</a>
+    </div>
+
+    <div class="cat-section-title">✨ agete — 輕奢珠寶</div>
+    <div class="place-card featured">
+      <div class="place-header">
+        <div class="place-glyph">✨</div>
+        <div>
+          <div class="place-name">agete（アガット）</div>
+          <div class="place-jp">日本最早「時尚珠寶」品牌</div>
+        </div>
+      </div>
+      <div class="place-desc">古典 × 現代風格輕奢珠寶，K 金搭配天然石，每件可疊加搭配。京都三間店，選品與台灣不同！</div>
+      <div style="margin-top: 14px;">
+        <a class="shop-row" href="https://agete.com/shop/detail/?real_shop_id=40" target="_blank">
+          <span class="shop-icon">🏬</span>
+          <div><div class="shop-name">agete 京都高島屋店</div><div class="shop-sub">四条通河原町西入 本館 1F · 075-212-4355 · 10:00–20:00</div></div>
+          <span class="shop-arrow">›</span>
+        </a>
+        <a class="shop-row" href="https://agete.com/shop/detail/?real_shop_id=41" target="_blank">
+          <span class="shop-icon">🏬</span>
+          <div><div class="shop-name">agete 京都大丸店</div><div class="shop-sub">四条高倉 大丸京都店内</div></div>
+          <span class="shop-arrow">›</span>
+        </a>
+        <a class="shop-row" href="https://agete.com/shop/kyoto" target="_blank">
+          <span class="shop-icon">🪴</span>
+          <div><div class="shop-name">agete 京都三条（獨立店）<span style="font-size:10px; color:var(--accent); margin-left:6px; letter-spacing:0.1em;">推薦</span></div><div class="shop-sub">三条通・選品最完整，有限定款</div></div>
+          <span class="shop-arrow">›</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 男友必逛 -->
+  <div class="cat-content" id="cat-bf">
+    <div class="strategy-banner">
+      <span class="gold-text">Day 4 分頭行動策略</span> — 四条河原町到寺町，步行 5 分鐘內搞定所有事：<br>
+      妳逛 <strong>agete 三間店</strong>，他逛 <strong>BEAMS + 古著 + 公仔</strong>，傍晚一起看婚戒
+    </div>
+
+    <div class="cat-section-title">🧥 潮流 Select Shop</div>
+    <div class="place-card featured">
+      <div class="place-header">
+        <div class="place-glyph">🧥</div>
+        <div>
+          <div class="place-name">BEAMS 京都</div>
+          <div class="place-jp">ビームス 京都</div>
+        </div>
+      </div>
+      <div class="place-desc">京都店有關西限定款和日本工藝聯名，夏季花襯衫 / Resort 系列必逛。可能找到台灣買不到的版本。</div>
+      <div class="place-meta">
+        <span class="place-badge">四条河原町エリア</span>
+        <span class="place-badge">11:00–20:00</span>
+      </div>
+      <a class="place-link" href="https://www.beams.co.jp/en/shop/kyo/" target="_blank">官方店鋪頁 →</a>
+    </div>
+
+    <div class="cat-section-title">🌺 古著花襯衫</div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🌺</div>
+        <div>
+          <div class="place-name">古着屋 JAM 京都四条店</div>
+          <div class="place-jp">古着屋JAM</div>
+        </div>
+      </div>
+      <div class="place-desc">河原町駅徒步 1 分鐘。夏季備有大量 <strong>Aloha 夏威夷花襯衫</strong>，從平價到稀有 Vintage 都有，是找花襯衫的首選。</div>
+      <div class="place-meta">
+        <span class="place-badge">四条河原町 1分</span>
+        <span class="place-badge">12:00–20:00</span>
+        <span class="place-badge">¥1,000 up</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=古着屋JAM+京都四条店" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🎽</div>
+        <div>
+          <div class="place-name">ROGER'S</div>
+          <div class="place-jp">ロジャーズ</div>
+        </div>
+      </div>
+      <div class="place-desc">1992 年創業老店，美式 Casual 廣大寶庫。Vintage 花襯衫・牛仔・軍裝，寶物感十足。</div>
+      <div class="place-meta">
+        <span class="place-badge">寺町エリア</span>
+        <span class="place-badge">12:00–20:00</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=ROGER'S+古着+京都" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">👕</div>
+        <div>
+          <div class="place-name">KINJI 河原町 OPA 店</div>
+          <div class="place-jp">KINJI</div>
+        </div>
+      </div>
+      <div class="place-desc">平價古著量販，款式多翻新快，喜歡大量翻看挖寶體驗首選。花襯衫庫存很多。</div>
+      <div class="place-meta">
+        <span class="place-badge">河原町 OPA 内</span>
+        <span class="place-badge">11:00–21:00</span>
+        <span class="place-badge">¥500 up</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=KINJI+河原町OPA" target="_blank">Google Maps →</a>
+    </div>
+
+    <div class="cat-section-title">🏆 公仔 / 潮流玩具</div>
+    <div class="place-card featured">
+      <div class="place-header">
+        <div class="place-glyph">🏆</div>
+        <div>
+          <div class="place-name">ホビースクエア京都（Volks）</div>
+          <div class="place-jp">関西最大級</div>
+        </div>
+      </div>
+      <div class="place-desc">關西最大玩具模型旗艦店。手辦完成品・模型組裝・Figure・鐵道模型・工具材料，公仔迷天堂。</div>
+      <div class="place-meta">
+        <span class="place-badge">京都市区内</span>
+        <span class="place-badge">確認官網</span>
+      </div>
+      <a class="place-link" href="https://hobby.volks.co.jp/shop/hs_kyoto.html" target="_blank">官方網站 →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🗃</div>
+        <div>
+          <div class="place-name">まんだらけ 京都</div>
+          <div class="place-jp">まんだらけ</div>
+        </div>
+      </div>
+      <div class="place-desc">中古漫畫・公仔・玩具・特攝全都有，懷舊寶物感爆表。絕版稀有公仔，逛起來很費時（警告⚠️）</div>
+      <div class="place-meta">
+        <span class="place-badge">寺町エリア</span>
+        <span class="place-badge">12:00–20:00</span>
+        <span class="place-badge">中古 ¥100 up</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=まんだらけ+京都" target="_blank">Google Maps →</a>
+    </div>
+    <div class="place-card">
+      <div class="place-header">
+        <div class="place-glyph">🎲</div>
+        <div>
+          <div class="place-name">駿河屋 京都寺町店</div>
+          <div class="place-jp">駿河屋</div>
+        </div>
+      </div>
+      <div class="place-desc">中古公仔・動漫周邊・遊戲，按狀態分類細，寶藏挖掘感強。買取也接受。</div>
+      <div class="place-meta">
+        <span class="place-badge">新京極・寺町</span>
+        <span class="place-badge">11:00–21:00</span>
+      </div>
+      <a class="place-link" href="https://maps.google.com/?q=駿河屋+京都寺町店" target="_blank">Google Maps →</a>
+    </div>
+  </div>
+
+  <!-- 🎬 影片推薦 tab -->
+  <div class="cat-content" id="cat-video">
+    <div class="video-intro">
+      🎬 精選旅遊 YouTube 推薦 — 老辣妹、impeachi 風格的實地體驗 vlog，出發前先偷看！
+    </div>
+
+    <a class="video-card" href="https://www.youtube.com/results?search_query=老辣妹+京都+旅遊" target="_blank">
+      <div class="video-thumb" style="background:linear-gradient(135deg,#FF6B6B,#FFE66D);">
+        🏯
+        <div class="video-play">▶</div>
+      </div>
+      <div class="video-meta">
+        <div class="video-channel">🔴 老辣妹 · Travel Vlog</div>
+        <div class="video-title">京都必去！千本鳥居 × 抹茶聖代完整攻略</div>
+        <div class="video-desc">跟著老辣妹實地探索伏見稻荷、錦市場，以及超好吃的抹茶甜點推薦，接地氣又好笑的旅遊 vlog！</div>
+        <span class="video-btn">▶ YouTube 搜尋</span>
+      </div>
+    </a>
+
+    <a class="video-card" href="https://www.youtube.com/results?search_query=impeachi+京都+旅遊+vlog" target="_blank">
+      <div class="video-thumb" style="background:linear-gradient(135deg,#667eea,#764ba2);">
+        🌸
+        <div class="video-play">▶</div>
+      </div>
+      <div class="video-meta">
+        <div class="video-channel">🟣 impeachi · Aesthetic Vlog</div>
+        <div class="video-title">京都美到想哭！東山漫步 × 祇園夜拍秘境</div>
+        <div class="video-desc">impeachi 風格的京都美景 vlog，清水寺、二三年坂、花見小路夜晚氛圍，拍照取景攻略必看！</div>
+        <span class="video-btn">▶ YouTube 搜尋</span>
+      </div>
+    </a>
+
+    <a class="video-card" href="https://www.youtube.com/results?search_query=USJ+任天堂世界+攻略+2025" target="_blank">
+      <div class="video-thumb" style="background:linear-gradient(135deg,#f093fb,#f5576c);">
+        🎢
+        <div class="video-play">▶</div>
+      </div>
+      <div class="video-meta">
+        <div class="video-channel">🎡 USJ 攻略 · Nintendo World</div>
+        <div class="video-title">超級任天堂世界 + DK Adventure 一日完全攻略</div>
+        <div class="video-desc">Mine-Cart Madness 新設施搶先看！Express Pass 使用教學、入場策略、必買周邊，USJ 全攻略！</div>
+        <span class="video-btn">▶ YouTube 搜尋</span>
+      </div>
+    </a>
+
+    <a class="video-card" href="https://www.youtube.com/results?search_query=京都+美食+推薦+台灣人" target="_blank">
+      <div class="video-thumb" style="background:linear-gradient(135deg,#43e97b,#38f9d7);">
+        🍵
+        <div class="video-play">▶</div>
+      </div>
+      <div class="video-meta">
+        <div class="video-channel">🍜 京都美食 · Food Tour</div>
+        <div class="video-title">台灣人去京都吃什麼？拉麵 × 抹茶 × 錦市場小吃大合集</div>
+        <div class="video-desc">第一旭拉麵、茶寮都路里抹茶聖代、錦市場食べ歩き，一次滿足所有京都美食慾望！</div>
+        <span class="video-btn">▶ YouTube 搜尋</span>
+      </div>
+    </a>
+  </div>
+
+</div>
+
+<!-- ── 地圖 (已移入景點 tab) ── -->
+<div class="page" id="page-map" style="display:none!important;">
+  <div class="page-header">
+    <div class="overline"><span class="gold-line"></span>📍 Map</div>
+    <h2>🗺 地圖<em>導覽</em></h2>
+  </div>
+  <div class="map-embed" style="margin-top:4px;">
+    <iframe
+      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d52601.51767963705!2d135.6786!3d34.9858!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6001a8d6cd3cc3f1%3A0xc0961d366bbb1d3d!2sKyoto%2C+Japan!5e0!3m2!1szh-TW!2sus"
+      allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+    </iframe>
+  </div>
+  <div class="map-section-title">📍 快速導航 — Quick Nav</div>
+  <a class="map-pin" href="https://maps.google.com/?q=御宿野乃+京都七条" target="_blank">
+    <div class="pin-dot">🏨</div>
+    <div class="map-pin-info"><div class="map-pin-name">御宿野乃 京都七条</div><div class="map-pin-addr">京都七条エリア</div></div>
+    <span class="map-pin-arrow">›</span>
+  </a>
+  <a class="map-pin" href="https://maps.google.com/?q=伏見稲荷大社" target="_blank">
+    <div class="pin-dot">⛩️</div>
+    <div class="map-pin-info"><div class="map-pin-name">伏見稻荷大社</div><div class="map-pin-addr">JR 稲荷駅すぐ</div></div>
+    <span class="map-pin-arrow">›</span>
+  </a>
+  <a class="map-pin" href="https://maps.google.com/?q=清水寺+京都" target="_blank">
+    <div class="pin-dot">🏯</div>
+    <div class="map-pin-info"><div class="map-pin-name">清水寺</div><div class="map-pin-addr">東山区清水1丁目294</div></div>
+    <span class="map-pin-arrow">›</span>
+  </a>
+  <a class="map-pin" href="https://maps.google.com/?q=有次+錦市場" target="_blank">
+    <div class="pin-dot">🔪</div>
+    <div class="map-pin-info"><div class="map-pin-name">有次（錦市場）</div><div class="map-pin-addr">中京区錦小路通御幸町西入</div></div>
+    <span class="map-pin-arrow">›</span>
+  </a>
+  <a class="map-pin" href="https://maps.google.com/?q=高島屋京都店" target="_blank">
+    <div class="pin-dot">🏬</div>
+    <div class="map-pin-info"><div class="map-pin-name">高島屋 京都店（agete）</div><div class="map-pin-addr">下京区四条通河原町西入</div></div>
+    <span class="map-pin-arrow">›</span>
+  </a>
+  <a class="map-pin" href="https://maps.google.com/?q=花見小路+祇園" target="_blank">
+    <div class="pin-dot">🌸</div>
+    <div class="map-pin-info"><div class="map-pin-name">花見小路（祇園）</div><div class="map-pin-addr">東山区祇園町南側</div></div>
+    <span class="map-pin-arrow">›</span>
+  </a>
+  <a class="map-pin" href="https://maps.google.com/?q=Universal+Studios+Japan" target="_blank">
+    <div class="pin-dot">🎡</div>
+    <div class="map-pin-info"><div class="map-pin-name">環球影城 USJ（大阪）</div><div class="map-pin-addr">JR 桜島線 ユニバーサルシティ駅</div></div>
+    <span class="map-pin-arrow">›</span>
+  </a>
+</div>
+
+<!-- ── 旅遊資訊 ── -->
+<div class="page" id="page-info">
+  <div class="page-header">
+    <div class="overline"><span class="gold-line"></span>ℹ️ Info</div>
+    <h2>📋 旅遊<em>資訊</em></h2>
+  </div>
+
+  <div class="info-sec-title">✈️ Flights</div>
+
+  <!-- 訂位代號 & 票號 — 獨立區塊 -->
+  <div class="booking-strip">
+    <div class="booking-item">
+      <div class="booking-label">去程</div>
+      <div class="booking-code">CI172</div>
+      <div class="booking-sub">TPE → KIX · May 28</div>
+    </div>
+    <div class="booking-item">
+      <div class="booking-label">回程</div>
+      <div class="booking-code">CI173</div>
+      <div class="booking-sub">KIX → TPE · Jun 1</div>
+    </div>
+  </div>
+
+  <!-- 去程 & 回程卡片 — 左右並排可滑動 -->
+  <div class="flight-cards-scroll">
+    <div class="flight-display-card outbound">
+      <div class="fdc-overline">✈️ 去程 · May 28, 2026</div>
+      <div class="fdc-route">
+        <div><div class="fdc-city">TPE</div><div class="fdc-iata">台北桃園</div></div>
+        <div class="fdc-arrow">——›</div>
+        <div><div class="fdc-city">KIX</div><div class="fdc-iata">大阪關西</div></div>
+      </div>
+      <div class="info-row"><span class="info-row-label">班號</span><span class="info-row-value">CI172</span></div>
+      <div class="info-row"><span class="info-row-label">出發</span><span class="info-row-value">14:20 · T2</span></div>
+      <div class="info-row"><span class="info-row-label">抵達</span><span class="info-row-value gold">18:05 · T1</span></div>
+    </div>
+    <div class="flight-display-card inbound">
+      <div class="fdc-overline">🛬 回程 · June 1, 2026</div>
+      <div class="fdc-route">
+        <div><div class="fdc-city">KIX</div><div class="fdc-iata">大阪關西</div></div>
+        <div class="fdc-arrow">——›</div>
+        <div><div class="fdc-city">TPE</div><div class="fdc-iata">台北桃園</div></div>
+      </div>
+      <div class="info-row"><span class="info-row-label">班號</span><span class="info-row-value">CI173</span></div>
+      <div class="info-row"><span class="info-row-label">出發</span><span class="info-row-value">19:05 · T1</span></div>
+      <div class="info-row"><span class="info-row-label">抵達</span><span class="info-row-value gold">21:10 · T2</span></div>
+    </div>
+  </div>
+
+  <div class="info-sec-title">🏨 Hotel</div>
+  <div class="hotel-card">
+    <div class="hotel-name">御宿野乃 京都七条</div>
+    <div class="hotel-sub">天然溫泉 · Dormy Inn Premium</div>
+    <div class="info-row"><span class="info-row-label">Check-in</span><span class="info-row-value">5/28（15:00 後）</span></div>
+    <div class="info-row"><span class="info-row-label">Check-out</span><span class="info-row-value">6/1（11:00 前）</span></div>
+    <div class="info-row"><span class="info-row-label">溫泉</span><span class="info-row-value gold">天然溫泉 ✓</span></div>
+    <a class="place-link" href="https://maps.google.com/?q=御宿野乃+京都七条" target="_blank" style="margin-top:14px;">Google Maps →</a>
+  </div>
+
+  <div class="info-sec-title">🚆 Transportation</div>
+  <div class="tip-row"><div class="tip-icon-col">✈</div><div class="tip-body"><strong>KIX → 京都</strong>：JR Haruka 特急，約 75 分鐘，¥3,490</div></div>
+  <div class="tip-row"><div class="tip-icon-col">🎡</div><div class="tip-body"><strong>京都 → USJ</strong>：JR 新快速到大阪（30min）→ 夢咲線（5min）總計約 1 小時，¥1,080</div></div>
+  <div class="tip-row"><div class="tip-icon-col">💳</div><div class="tip-body"><strong>IC 卡</strong>：ICOCA / Suica，KIX 可購買，超商・巴士・地鐵通用</div></div>
+  <div class="tip-row"><div class="tip-icon-col">🚌</div><div class="tip-body"><strong>京都巴士</strong>：206・5・100 號常用，均一段 ¥230，一日票 ¥700</div></div>
+  <div class="tip-row"><div class="tip-icon-col">🚆</div><div class="tip-body"><strong>京都地鐵</strong>：烏丸線（南北）+ 東西線</div></div>
+
+  <div class="info-sec-title">🎢 Universal Studios Japan — Day 2 (5/29 Fri)</div>
+  <div class="usj-info-wrap">
+    <div class="usj-info-section">
+      <div class="usj-info-label">🎫 Express Pass — 已購入</div>
+      <div class="usj-info-val">
+        <strong>⛏ Mine-Cart Madness</strong>（礦山のトロッコアドベンチャー）<br>
+        DK Adventure — Donkey Kong 世界新設施，搭礦車高速穿越叢林軌道！
+      </div>
+      <span class="usj-info-badge">✓ Minecart Express Pass 已確認</span>
+    </div>
+    <div class="usj-info-section">
+      <div class="usj-info-label">🗺 必玩設施</div>
+      <div class="usj-info-val">
+        <strong>Super Nintendo World</strong> — マリオカート・ヨッシーアドベンチャー<br>
+        <strong>Wizarding World</strong> — ハリー・ポッター・アンド・ザ・フォービドゥン・ジャーニー<br>
+        <strong>DK Adventure</strong> — Mine-Cart Madness（Express Pass 使用）
+      </div>
+    </div>
+    <div class="usj-info-section">
+      <div class="usj-info-label">📋 入場注意事項</div>
+      <div class="usj-info-val">
+        • 交通：京都駅 → 大阪駅（JR 新快速 30min）→ ユニバーサルシティ駅（JR 夢咲線 5min）<br>
+        • 費用：¥1,080／人（單程）<br>
+        • Express Pass 入口在設施旁側門，請提前確認 USJ App<br>
+        • 大型置物品需存置物櫃（場內免費，Nordic 區外付費）<br>
+        • 建議帶雨衣（部分設施會濕）
+      </div>
+    </div>
+    <div class="usj-info-section">
+      <div class="usj-info-label">🍌 DK Adventure 必吃</div>
+      <div class="usj-info-val">
+        <strong>香蕉杯冰淇淋</strong>（DK 區限定）· <strong>奶油啤酒</strong>（哈利波特區）<br>
+        <strong>蘑菇帽冰淇淋</strong>（任天堂世界）
+      </div>
+    </div>
+    <div class="usj-info-section">
+      <div class="usj-info-label">🛍 必買周邊</div>
+      <div class="usj-info-val">
+        マリオ系列周邊 · DK バナナグッズ · ハリーポッター魔法の杖
+      </div>
+    </div>
+  </div>
+
+  <div class="info-sec-title">💡 Travel Tips</div>
+  <div class="tip-row"><div class="tip-icon-col">🌦</div><div class="tip-body"><strong>5 月底天氣</strong>：白天 25–30°C，偶有梅雨，攜帶輕便雨傘</div></div>
+  <div class="tip-row"><div class="tip-icon-col">📱</div><div class="tip-body"><strong>網路</strong>：建議購買日本 SIM 或租 WiFi 分享器</div></div>
+  <div class="tip-row"><div class="tip-icon-col">🏧</div><div class="tip-body"><strong>現金</strong>：7-11・全家 ATM 可領台灣卡，小店多數只收現金</div></div>
+  <div class="tip-row"><div class="tip-icon-col">🛍</div><div class="tip-body"><strong>退稅</strong>：購物滿 ¥5,500 可退消費稅，需護照辦理</div></div>
+  <div class="tip-row"><div class="tip-icon-col">⛩</div><div class="tip-body"><strong>寺廟禮儀</strong>：進殿脫鞋・確認是否可拍照・輕聲細語</div></div>
+
+  <!-- 💰 花費紀錄 -->
+  <div class="info-sec-title">💰 花費紀錄</div>
+  <div class="expense-form">
+    <div class="exp-row">
+      <input class="exp-input" id="exp-purpose" type="text" placeholder="用途（例：午餐、車票、藥妝…）">
+    </div>
+    <div class="exp-row">
+      <select class="exp-select" id="exp-currency">
+        <option value="JPY">¥ JPY</option>
+        <option value="TWD">$ TWD</option>
+        <option value="USD">$ USD</option>
+      </select>
+      <input class="exp-input exp-amount" id="exp-amount" type="number" placeholder="金額" min="0" step="1">
+    </div>
+    <div class="exp-payer" id="exp-payer-btns">
+      <button class="exp-payer-btn sel-vik" onclick="selectPayer('Vik',this)">👩 Vik</button>
+      <button class="exp-payer-btn" onclick="selectPayer('Mike',this)">👨 Mike</button>
+    </div>
+    <button class="exp-add-btn" onclick="addExpense()">＋ 新增花費</button>
+  </div>
+  <div class="expense-list" id="expense-list"></div>
+  <div class="expense-summary" id="expense-summary" style="display:none;"></div>
+
+</div>
+
+<!-- ══════════════════════
+     BOTTOM NAV
+     ══════════════════════ -->
+<nav class="nav-bar">
+  <button class="nav-item active" id="nav-home" onclick="switchPage('home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="9 22 9 12 15 12 15 22" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="nav-label">首頁</span>
+  </button>
+  <button class="nav-item" id="nav-itinerary" onclick="switchPage('itinerary')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <rect x="3" y="4" width="18" height="18" rx="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="16" y1="2" x2="16" y2="6" stroke-linecap="round"/>
+      <line x1="8" y1="2" x2="8" y2="6" stroke-linecap="round"/>
+      <line x1="3" y1="10" x2="21" y2="10" stroke-linecap="round"/>
+    </svg>
+    <span class="nav-label">行程</span>
+  </button>
+  <button class="nav-item" id="nav-places" onclick="switchPage('places')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="10" r="3" stroke-linecap="round"/>
+    </svg>
+    <span class="nav-label">景點</span>
+  </button>
+  <button class="nav-item" id="nav-info" onclick="switchPage('info')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12" stroke-linecap="round"/>
+      <line x1="12" y1="16" x2="12.01" y2="16" stroke-linecap="round"/>
+    </svg>
+    <span class="nav-label">資訊</span>
+  </button>
+  <button class="nav-item" id="nav-history" onclick="switchPage('history')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path d="M22 2L11 13" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M22 2L15 22l-4-9-9-4 18-7z" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="nav-label">旅程</span>
+  </button>
+</nav>
+
+<script>
+  /* ─── Navigation ─── */
+  function switchPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    document.getElementById('nav-' + name).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (name === 'history') renderTrips();
+  }
+  function switchDay(id, btn) {
+    document.querySelectorAll('.day-content').forEach(d => d.classList.remove('active'));
+    document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+    btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }
+  /* ─── Daily Tips → jump to itinerary day ─── */
+  function goToDay(dayId) {
+    switchPage('itinerary');
+    setTimeout(() => {
+      const tabs = document.querySelectorAll('.day-tab');
+      const dayMap = { day1: 0, day2: 1, day3: 2, day4: 3, day5: 4 };
+      const idx = dayMap[dayId];
+      if (idx !== undefined && tabs[idx]) switchDay(dayId, tabs[idx]);
+    }, 120);
+  }
+  function switchCat(id, btn) {
+    document.querySelectorAll('.cat-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* ─── Checkboxes ─── */
+  function toggleCheck(item) {
+    item.classList.toggle('checked');
+    const tick = item.querySelector('.check-tick');
+    tick.style.display = item.classList.contains('checked') ? 'block' : 'none';
+    try {
+      const items = document.querySelectorAll('.check-item');
+      const state = Array.from(items).map(i => i.classList.contains('checked'));
+      localStorage.setItem('kyoto_checks', JSON.stringify(state));
+    } catch(e) {}
+  }
+  try {
+    const saved = JSON.parse(localStorage.getItem('kyoto_checks') || '[]');
+    document.querySelectorAll('.check-item').forEach((item, i) => {
+      if (saved[i]) {
+        item.classList.add('checked');
+        item.querySelector('.check-tick').style.display = 'block';
+      }
+    });
+  } catch(e) {}
+
+  /* ─── Countdown ─── */
+  function updateCountdown() {
+    const target = new Date('2026-05-28T14:20:00+08:00');
+    const diff = target - new Date();
+    const el = document.getElementById('countdown-days');
+    const txt = document.getElementById('countdown-text');
+    if (diff <= 0) {
+      el.innerHTML = '<span class="accent">✈</span>';
+      txt.textContent = '出發囉！旅程開始';
+    } else {
+      const days = Math.floor(diff / 86400000);
+      const hrs  = Math.floor((diff % 86400000) / 3600000);
+      el.textContent = days;
+      txt.textContent = `天 ${hrs} 小時後出發 · May 28, 2026`;
+    }
+  }
+  updateCountdown();
+  setInterval(updateCountdown, 60000);
+
+  /* ─── Travel History ─── */
+  const DEFAULT_TRIPS = [
+    {
+      id: 'kyoto2026',
+      city: '京都',
+      country: '日本',
+      flag: '🇯🇵',
+      start: '2026-05-28',
+      end: '2026-06-01',
+      status: 'upcoming',
+      tags: ['寺廟神社', 'agete購物', '婚戒', '環球影城', '抹茶', '古著']
+    }
+  ];
+
+  function getTrips() {
+    try {
+      const saved = localStorage.getItem('travel_trips');
+      return saved ? JSON.parse(saved) : DEFAULT_TRIPS;
+    } catch(e) { return DEFAULT_TRIPS; }
+  }
+  function saveTrips(trips) {
+    try { localStorage.setItem('travel_trips', JSON.stringify(trips)); } catch(e) {}
+  }
+
+  function calcDays(start, end) {
+    const d = (new Date(end) - new Date(start)) / 86400000;
+    return Math.max(1, Math.round(d));
+  }
+  function formatDate(d) {
+    if (!d) return '';
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function statusLabel(s) {
+    return { upcoming: '即將出發 🌱', completed: '已完成 ✓', planning: '規劃中 💭' }[s] || s;
+  }
+
+  function renderTrips() {
+    const trips = getTrips();
+    const list = document.getElementById('trip-list');
+    const empty = document.getElementById('history-empty');
+    list.innerHTML = '';
+
+    if (trips.length === 0) {
+      empty.style.display = 'block';
+      document.getElementById('stat-trips').textContent = '0';
+      document.getElementById('stat-countries').textContent = '0';
+      document.getElementById('stat-days').textContent = '0';
+      return;
+    }
+    empty.style.display = 'none';
+
+    // Stats
+    const countries = new Set(trips.map(t => t.country)).size;
+    const totalDays = trips.filter(t => t.status === 'completed')
+                           .reduce((sum, t) => sum + calcDays(t.start, t.end), 0);
+    document.getElementById('stat-trips').textContent = trips.length;
+    document.getElementById('stat-countries').textContent = countries;
+    document.getElementById('stat-days').textContent = totalDays || calcDays(trips[0].start, trips[0].end);
+
+    // Sort: upcoming first, then planning, then completed
+    const order = { upcoming: 0, planning: 1, completed: 2 };
+    [...trips].sort((a,b) => (order[a.status]||2)-(order[b.status]||2) || new Date(b.start)-new Date(a.start))
+    .forEach(trip => {
+      const days = calcDays(trip.start, trip.end);
+      const tagsHtml = (trip.tags || []).map(t =>
+        `<span class="trip-highlight-tag">${t}</span>`).join('');
+      list.innerHTML += `
+        <div class="trip-card">
+          <div class="trip-card-header">
+            <div class="trip-flag">${trip.flag || '🗺'}</div>
+            <div class="trip-meta">
+              <div class="trip-name">${trip.city}${trip.country ? '，' + trip.country : ''}</div>
+              <div class="trip-dates">${formatDate(trip.start)} — ${formatDate(trip.end)}</div>
+              <span class="trip-status ${trip.status}">${statusLabel(trip.status)}</span>
+            </div>
+          </div>
+          ${tagsHtml ? `<div class="trip-highlights">${tagsHtml}</div>` : ''}
+          <div class="trip-card-footer">
+            <div class="trip-stat"><div class="trip-stat-num">${days}</div><div class="trip-stat-label">天</div></div>
+            <div class="trip-stat"><div class="trip-stat-num">${trip.flag || '🌍'}</div><div class="trip-stat-label">${trip.country || '—'}</div></div>
+            <div class="trip-stat"><div class="trip-stat-num">${new Date(trip.start).getFullYear()}</div><div class="trip-stat-label">年份</div></div>
+            <button class="trip-delete-btn" onclick="deleteTrip('${trip.id}')" title="刪除">✕</button>
+          </div>
+        </div>`;
+    });
+  }
+
+  function deleteTrip(id) {
+    if (!confirm('確定要刪除這筆旅遊記錄嗎？')) return;
+    const trips = getTrips().filter(t => t.id !== id);
+    saveTrips(trips);
+    renderTrips();
+  }
+
+  /* ─── Modal ─── */
+  function openModal() {
+    document.getElementById('trip-modal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    // reset form
+    ['f-city','f-country','f-flag','f-start','f-end','f-tags'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('f-status').value = 'upcoming';
+  }
+  function closeModal() {
+    document.getElementById('trip-modal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('trip-modal')) closeModal();
+  }
+  function saveTrip() {
+    const city    = document.getElementById('f-city').value.trim();
+    const country = document.getElementById('f-country').value.trim();
+    const flag    = document.getElementById('f-flag').value.trim();
+    const start   = document.getElementById('f-start').value;
+    const end     = document.getElementById('f-end').value;
+    const status  = document.getElementById('f-status').value;
+    const tagsRaw = document.getElementById('f-tags').value.trim();
+    if (!city || !start || !end) { alert('請填寫目的地和日期 🗺'); return; }
+    const tags = tagsRaw ? tagsRaw.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
+    const trips = getTrips();
+    trips.unshift({ id: Date.now().toString(), city, country, flag: flag || '🗺', start, end, status, tags });
+    saveTrips(trips);
+    closeModal();
+    renderTrips();
+  }
+
+  // Init
+  renderTrips();
+
+  /* ─── Unified Timeline + Map ─── */
+
+  const DAY_DEFAULTS = {
+    day1: [
+      {id:'d1_1',time:'14:20',title:'CI172 台北桃園出發',desc:'第二航廈出發 · 飛行時間約 2h45m',tags:[{l:'交通'}],mapQ:'桃園國際機場+第二航廈',lat:25.0772,lng:121.2325},
+      {id:'d1_2',time:'18:05',title:'抵達大阪關西國際機場',desc:'入境後搭乘 JR Haruka 特急往京都駅（約 75 分鐘，¥3,490）<br>可在機場購買 ICOCA IC 卡',tags:[{l:'交通'},{l:'KIX→京都',c:'gold'}],mapQ:'関西国際空港',lat:34.4347,lng:135.2440},
+      {id:'d1_3',time:'20:00',title:'入住御宿野乃 京都七条',desc:'京都七条エリア · 天然溫泉旅館',tags:[{l:'住宿',c:'dark'}],mapQ:'御宿野乃+京都七条',lat:34.9890,lng:135.7559},
+      {id:'d1_4',time:'21:00',title:'晚餐 — 第一旭 or 新福菜館',desc:'京都駅附近老字號拉麵，深夜也開，完美的第一餐',tags:[{l:'美食'}],mapQ:'第一旭+京都駅',lat:34.9872,lng:135.7545}
+    ],
+    day2: [
+      {id:'d2_1',time:'07:30',title:'早餐 + 出發',desc:'旅館早餐或京都駅便當',tags:[{l:'美食'}],mapQ:'御宿野乃+京都七条',lat:34.9890,lng:135.7559},
+      {id:'d2_2',time:'08:20',title:'京都駅 → USJ',desc:'JR 新快速到大阪（30min）→ JR 夢咲線（5min）<br>總計約 1 小時・費用 ¥1,080',tags:[{l:'交通'}],mapQ:'ユニバーサルシティ駅+大阪市',lat:34.6654,lng:135.4323},
+      {id:'d2_3',time:'09:00',title:'🎡 Universal Studios Japan',desc:'必玩：<strong>超級任天堂世界</strong> · <strong>哈利波特魔法世界</strong><br>DK Adventure — Mine-Cart Madness（快速通關已購）',tags:[{l:'USJ',c:'gold'},{l:'娛樂'}],mapQ:'Universal+Studios+Japan',lat:34.6654,lng:135.4326,
+        extra:`<div class="usj-pass-card"><div class="usj-pass-label">🎫 Express Pass — 已購入</div><div class="usj-pass-title">⛏ Mine-Cart Madness</div><div class="usj-pass-detail"><strong>DK Adventure — Donkey Kong 世界</strong><br>搭上礦車在叢林軌道上高速穿梭，躲避障礙・採集金幣！<br><br>🕘 <strong>建議</strong>：開門直衝，Express 入口在設施旁側門<br>📲 進場前 USJ App 確認 Express 入口位置<br>🎒 隨身包需寄置物櫃（場內免費）<br>🍌 DK 區必吃：DK 香蕉杯冰淇淋</div><span class="usj-pass-badge">✓ Minecart Express Pass 已確認</span></div>`},
+      {id:'d2_4',time:'21:00',title:'返回京都 · 泡溫泉',desc:'走了一天回旅館泡天然溫泉，最幸福的事',tags:[{l:'住宿',c:'dark'}],mapQ:'御宿野乃+京都七条',lat:34.9890,lng:135.7559}
+    ],
+    day3: [
+      {id:'d3_1',time:'08:30',title:'清水寺',desc:'早晨人少，清水舞台俯瞰京都市區。巴士 206「清水道」下車',tags:[{l:'寺廟'}],mapQ:'清水寺+京都',lat:34.9948,lng:135.7850},
+      {id:'d3_2',time:'10:30',title:'二年坂・三年坂 購物',desc:'天然礦石/瑪瑙飾品小店 · 陶器・漆器・京焼<br>傳統工藝品・名片夾・手巾',tags:[{l:'購物'},{l:'飾品',c:'gold'}],mapQ:'二年坂+三年坂+京都',lat:34.9994,lng:135.7828},
+      {id:'d3_3',time:'12:30',title:'抹茶午餐 / 甜點',desc:'<strong>伊藤久右衛門 祇園店</strong>— 抹茶拉麵 + 抹茶聖代<br><strong>茶寮 都路里</strong>— 老字號抹茶蕨餅・聖代',tags:[{l:'抹茶',c:'gold'},{l:'美食'}],mapQ:'伊藤久右衛門+祇園店',lat:35.0013,lng:135.7785},
+      {id:'d3_4',time:'14:30',title:'高台寺 or 知恩院',desc:'高台寺：枯山水庭園・安靜優美 (¥600)<br>知恩院：日本最大山門・壯觀震撼',tags:[{l:'寺廟'}],mapQ:'高台寺+京都',lat:35.0010,lng:135.7813},
+      {id:'d3_5',time:'16:30',title:'寺町京極商店街',desc:'室內拱廊，藥妝・雜貨・文具・礦石飾品，雨天也能逛',tags:[{l:'購物'}],mapQ:'寺町京極商店街+京都',lat:35.0073,lng:135.7673},
+      {id:'d3_6',time:'19:00',title:'先斗町晚餐',desc:'京都料理居酒屋，慶祝這段旅程 ✦',tags:[{l:'美食'}],mapQ:'先斗町+京都',lat:35.0038,lng:135.7727}
+    ],
+    day4: [
+      {id:'d4_1',time:'11:00',title:'高島屋 — 銀座白石',desc:'<strong>京都高島屋</strong>（10:00–20:00）<br>📍 <strong>銀座白石</strong> 位於 <strong>2F 寶飾・時計</strong>（建議現場確認最新樓層）<br>鑽石輕奢珠寶・品質卓越',tags:[{l:'銀座白石',c:'gold'},{l:'珠寶'}],mapQ:'京都高島屋',lat:35.0030,lng:135.7707},
+      {id:'d4_2',time:'12:30',title:'下午茶',desc:'四条河原町周邊甜點・茶室小憩，充個電再繼續逛',tags:[{l:'下午茶',c:'gold'},{l:'美食'}],mapQ:'四条河原町+京都+カフェ',lat:35.0038,lng:135.7720},
+      {id:'d4_3',time:'14:00',title:'Kyoto Loft — mina京都',desc:'<strong>mina京都 4F–6F</strong>（11:00–21:00）<br>設計文具・生活雜貨・季節選物，三層樓超好逛',tags:[{l:'Loft'},{l:'購物'}],mapQ:'ミーナ京都+ロフト',lat:35.0078,lng:135.7683},
+      {id:'d4_4',time:'15:30',title:'% Arabica — 精品咖啡',desc:'<strong>藤井大丸 1F</strong>（10:30–20:00）<br>京都人氣 Specialty Coffee，latte art 一流，必拍',tags:[{l:'☕ 咖啡',c:'gold'}],mapQ:'%Arabica+藤井大丸+京都',lat:35.0025,lng:135.7680},
+      {id:'d4_5',time:'16:30',title:'大丸京都 — agete 輕奢珠寶',desc:'<strong>大丸京都店 1F</strong>（10:00–20:00）<br>agete 日本輕奢珠寶，細膩工藝・適合日常配戴',tags:[{l:'agete',c:'gold'},{l:'珠寶'}],mapQ:'大丸京都+agete',lat:35.0030,lng:135.7665}
+    ],
+    day5: [
+      {id:'d5_1',time:'08:00',title:'享用旅館早餐',desc:'御宿野乃和式定食，泡完溫泉後最幸福的一餐',tags:[{l:'美食'}],mapQ:'御宿野乃+京都七条',lat:34.9890,lng:135.7559},
+      {id:'d5_2',time:'10:00',title:'退房 + JR 京都伊勢丹採購',desc:'抹茶零食・漬物・伴手禮，最後補購',tags:[{l:'採購'}],mapQ:'ジェイアール京都伊勢丹',lat:34.9857,lng:135.7587},
+      {id:'d5_3',time:'11:30',title:'京都 → 大阪（JR 新快速）',desc:'約 30 分鐘・¥570',tags:[{l:'交通'}],mapQ:'大阪駅',lat:34.7025,lng:135.4979},
+      {id:'d5_4',time:'12:30',title:'道頓堀 · 心齋橋',desc:'午餐大阪燒 or 章魚燒，心齋橋藥妝最後補購，Glico 看板合照',tags:[{l:'大阪'},{l:'美食'}],mapQ:'道頓堀+大阪',lat:34.6687,lng:135.5017},
+      {id:'d5_5',time:'16:30',title:'前往 KIX 關西機場',desc:'難波搭南海特急 Rapit 約 45 分，或 JR Haruka',tags:[{l:'交通'}],mapQ:'関西国際空港',lat:34.4347,lng:135.2440},
+      {id:'d5_6',time:'19:05',title:'CI173 大阪關西 → 台北桃園',desc:'21:10 抵達桃園，飛行時間約 3 小時',tags:[{l:'回家',c:'dark'}],mapQ:'桃園國際機場',lat:25.0772,lng:121.2325}
+    ]
+  };
+
+  const LMAPS = {}; // dayId → Leaflet map instance
+
+  // 強制清除 day3/day4 舊快取（行程對調後 bust cache）
+  if (!localStorage.getItem('kyoto_reset_swap_v4')) {
+    localStorage.removeItem('kyoto_sched_day3');
+    localStorage.removeItem('kyoto_sched_day4');
+    localStorage.setItem('kyoto_reset_swap_v4', '1');
+  }
+
+  function getSchedule(dayId) {
+    try {
+      const saved = JSON.parse(localStorage.getItem('kyoto_sched_' + dayId));
+      if (saved && saved.length > 0) return saved;
+    } catch(e) {}
+    return JSON.parse(JSON.stringify(DAY_DEFAULTS[dayId] || []));
+  }
+  function saveSchedule(dayId, items) {
+    try { localStorage.setItem('kyoto_sched_' + dayId, JSON.stringify(items)); } catch(e) {}
+  }
+
+  function tagHtml(tags) {
+    return (tags||[]).map(t => {
+      const cls = t.c ? ' ' + t.c : '';
+      return `<span class="tl-tag${cls}">${t.l}</span>`;
+    }).join('');
+  }
+
+  function renderTimeline(dayId) {
+    const tl = document.getElementById('timeline-' + dayId);
+    if (!tl) return;
+    const items = getSchedule(dayId);
+    items.sort((a,b) => (a.time||'99:99').localeCompare(b.time||'99:99'));
+    tl.innerHTML = '';
+    items.forEach((item, idx) => {
+      const isCustom = !item.id.startsWith('d');
+      const div = document.createElement('div');
+      div.className = 'tl-item' + (isCustom ? ' custom-item' : '');
+      div.dataset.id = item.id;
+      const mapLink = item.mapQ
+        ? `<a class="tl-map-link" href="https://maps.google.com/?q=${item.mapQ}" target="_blank">📍 查看地圖</a>`
+        : '';
+      const extra = item.extra ? item.extra : '';
+      const ticketBtn = item.id === 'd2_3'
+        ? `<button class="tl-ticket-btn" onclick="openTicket()">🎫 查看快速通關券</button>`
+        : '';
+      div.innerHTML = `
+        <div class="tl-time-col">${item.time||'—'}</div>
+        <div class="tl-body">
+          <div class="tl-title">${item.title}</div>
+          <div class="tl-desc">${item.desc||''}</div>
+          ${item.tags&&item.tags.length ? `<div class="tl-tags">${tagHtml(item.tags)}</div>` : ''}
+          ${extra}
+          ${ticketBtn}
+          ${mapLink}
+          <button class="tl-del-btn" onclick="deleteItem('${dayId}','${item.id}')">✕ 刪除</button>
+        </div>`;
+      tl.appendChild(div);
+    });
+    renderMap(dayId, items);
+  }
+
+  function renderMap(dayId, items) {
+    const stops = (items||getSchedule(dayId)).filter(it => it.lat && it.lng);
+    const container = document.getElementById('map-' + dayId);
+    if (!container) return;
+
+    // If map not yet initialized, create it
+    if (!LMAPS[dayId]) {
+      if (typeof L === 'undefined') return;
+      const center = stops.length
+        ? [stops.reduce((s,i)=>s+i.lat,0)/stops.length, stops.reduce((s,i)=>s+i.lng,0)/stops.length]
+        : [35.0116, 135.7681];
+      const zoom = stops.length > 1 ? 12 : 14;
+      LMAPS[dayId] = L.map(container, {zoomControl:true, attributionControl:false}).setView(center, zoom);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18}).addTo(LMAPS[dayId]);
+    }
+
+    const map = LMAPS[dayId];
+    // Clear existing layers except tile layer
+    map.eachLayer(layer => { if (layer instanceof L.Marker || layer instanceof L.Polyline) map.removeLayer(layer); });
+
+    if (!stops.length) return;
+
+    // Numbered markers
+    stops.forEach((stop, i) => {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="map-pin">${i+1}</div>`,
+        iconSize: [26,26], iconAnchor: [13,13]
+      });
+      L.marker([stop.lat, stop.lng], {icon})
+        .bindTooltip(stop.title, {permanent:false, direction:'top'})
+        .addTo(map);
+    });
+
+    // Route polyline
+    const latlngs = stops.map(s => [s.lat, s.lng]);
+    L.polyline(latlngs, {color:'#D56989', weight:2.5, opacity:0.7, dashArray:'6,4'}).addTo(map);
+
+    // Fit bounds
+    if (stops.length > 1) {
+      map.fitBounds(L.latLngBounds(latlngs), {padding:[16,16]});
+    }
+
+    // Update Google Maps link
+    const gmLink = document.getElementById('gmaps-' + dayId);
+    if (gmLink && stops.length) {
+      const waypoints = stops.map(s => s.mapQ||`${s.lat},${s.lng}`).join('/');
+      gmLink.href = `https://www.google.com/maps/dir/${waypoints}`;
+    }
+  }
+
+  function toggleAddForm(dayId) {
+    const form = document.getElementById('add-form-' + dayId);
+    if (!form) return;
+    const showing = form.style.display !== 'none';
+    form.style.display = showing ? 'none' : 'block';
+    if (!showing) document.getElementById('add-name-' + dayId).focus();
+  }
+
+  function confirmAddItem(dayId) {
+    const time = (document.getElementById('add-time-' + dayId).value || '').trim();
+    const name = (document.getElementById('add-name-' + dayId).value || '').trim();
+    if (!name) { document.getElementById('add-name-' + dayId).focus(); return; }
+    const items = getSchedule(dayId);
+    items.push({ id: 'c_' + Date.now(), time, title: name, desc: '', tags: [{l:'自訂'}], isCustom: true });
+    saveSchedule(dayId, items);
+    document.getElementById('add-time-' + dayId).value = '';
+    document.getElementById('add-name-' + dayId).value = '';
+    toggleAddForm(dayId);
+    renderTimeline(dayId);
+  }
+
+  function deleteItem(dayId, id) {
+    const items = getSchedule(dayId).filter(i => i.id !== id);
+    saveSchedule(dayId, items);
+    renderTimeline(dayId);
+  }
+
+  // Initialize all timelines; maps init lazily when day is shown
+  ['day1','day2','day3','day4','day5'].forEach(renderTimeline);
+
+  // Re-invalidate map size when switching days
+  const _origSwitchDay = window.switchDay;
+  window.switchDay = function(dayId, btn) {
+    if (_origSwitchDay) _origSwitchDay(dayId, btn);
+    setTimeout(() => {
+      if (LMAPS[dayId]) LMAPS[dayId].invalidateSize();
+      else renderMap(dayId);
+    }, 50);
+  };
+
+
+  /* ─── Expense Tracker ─── */
+  let selectedPayer = 'Vik';
+
+  function selectPayer(name, btn) {
+    selectedPayer = name;
+    document.querySelectorAll('.exp-payer-btn').forEach(b => {
+      b.classList.remove('sel-vik','sel-mike');
+    });
+    btn.classList.add(name === 'Vik' ? 'sel-vik' : 'sel-mike');
+  }
+
+  function getExpenses() {
+    try { return JSON.parse(localStorage.getItem('kyoto_expenses') || '[]'); } catch(e) { return []; }
+  }
+  function saveExpenses(arr) {
+    try { localStorage.setItem('kyoto_expenses', JSON.stringify(arr)); } catch(e) {}
+  }
+
+  function addExpense() {
+    const purpose  = document.getElementById('exp-purpose').value.trim();
+    const currency = document.getElementById('exp-currency').value;
+    const amount   = parseFloat(document.getElementById('exp-amount').value);
+    if (!purpose) { document.getElementById('exp-purpose').focus(); return; }
+    if (!amount || amount <= 0) { document.getElementById('exp-amount').focus(); return; }
+    const arr = getExpenses();
+    arr.push({ id: Date.now(), purpose, currency, amount, paidBy: selectedPayer });
+    saveExpenses(arr);
+    document.getElementById('exp-purpose').value = '';
+    document.getElementById('exp-amount').value = '';
+    renderExpenses();
+  }
+
+  function deleteExpense(id) {
+    saveExpenses(getExpenses().filter(e => e.id !== id));
+    renderExpenses();
+  }
+
+  function renderExpenses() {
+    const arr = getExpenses();
+    const list = document.getElementById('expense-list');
+    const sumEl = document.getElementById('expense-summary');
+    list.innerHTML = '';
+
+    if (arr.length === 0) { sumEl.style.display = 'none'; return; }
+
+    arr.forEach(e => {
+      const div = document.createElement('div');
+      div.className = 'expense-item';
+      const cls = e.paidBy === 'Vik' ? 'vik' : 'mike';
+      const sym = e.currency === 'JPY' ? '¥' : e.currency === 'TWD' ? 'NT$' : '$';
+      const fmt = e.currency === 'JPY'
+        ? Math.round(e.amount).toLocaleString()
+        : e.amount.toLocaleString('en', {minimumFractionDigits:0, maximumFractionDigits:0});
+      div.innerHTML = `
+        <div class="expense-item-row">
+          <span class="exp-tag ${cls}">${e.paidBy === 'Vik' ? '👩 Vik' : '👨 Mike'}</span>
+          <span class="exp-purpose">${e.purpose}</span>
+          <span class="exp-amount-val" style="font-size:13px;">${sym}${fmt}</span>
+          <span class="exp-chevron">▾</span>
+        </div>
+        <div class="expense-item-detail">
+          <span style="font-size:11px;color:var(--muted-fg);">幣別：${e.currency}</span>
+          <span style="flex:1;"></span>
+          <button class="exp-del" onclick="event.stopPropagation();deleteExpense(${e.id})">✕ 刪除</button>
+        </div>`;
+      div.addEventListener('click', () => div.classList.toggle('expanded'));
+      list.appendChild(div);
+    });
+
+    // Summary
+    const totals = {};
+    const vikTotals = {};
+    const mikeTotals = {};
+    arr.forEach(e => {
+      totals[e.currency]    = (totals[e.currency]    || 0) + e.amount;
+      if (e.paidBy === 'Vik')  vikTotals[e.currency]  = (vikTotals[e.currency]  || 0) + e.amount;
+      if (e.paidBy === 'Mike') mikeTotals[e.currency] = (mikeTotals[e.currency] || 0) + e.amount;
+    });
+    const currencies = Object.keys(totals);
+    const symMap = { JPY:'¥', TWD:'NT$', USD:'$' };
+    let html = '<div class="exp-sum-title">📊 花費統計</div>';
+    currencies.forEach(c => {
+      const sym = symMap[c] || c;
+      const fmt = n => c === 'JPY' ? Math.round(n).toLocaleString() : n.toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:0});
+      html += `<div class="exp-sum-row"><span>合計 ${c}</span><span class="exp-sum-val">${sym}${fmt(totals[c])}</span></div>`;
+      if (vikTotals[c])  html += `<div class="exp-sum-row" style="padding-left:14px;font-size:12px;color:var(--muted-fg)"><span>👩 Vik</span><span>${sym}${fmt(vikTotals[c])}</span></div>`;
+      if (mikeTotals[c]) html += `<div class="exp-sum-row" style="padding-left:14px;font-size:12px;color:var(--muted-fg)"><span>👨 Mike</span><span>${sym}${fmt(mikeTotals[c])}</span></div>`;
+    });
+    sumEl.innerHTML = html;
+    sumEl.style.display = 'block';
+  }
+
+  renderExpenses();
+
+  // ── Ticket lightbox ──
+  function openTicket() {
+    document.getElementById('ticket-overlay').classList.add('open');
+  }
+  function closeTicket() {
+    document.getElementById('ticket-overlay').classList.remove('open');
+  }
+</script>
+
+<!-- USJ 票券 lightbox -->
+<div class="ticket-overlay" id="ticket-overlay" onclick="closeTicket()">
+  <button class="ticket-close" onclick="closeTicket()">✕</button>
+  <img src="usj-ticket.jpg" alt="Universal Express Pass" onclick="event.stopPropagation()">
+</div>
+
+</body>
+</html>
