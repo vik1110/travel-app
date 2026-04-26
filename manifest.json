@@ -1,0 +1,18 @@
+{
+  "name": "旅遊記錄",
+  "short_name": "旅遊",
+  "description": "Yuhsuan's Travel App 🌸",
+  "start_url": "/travel-app/",
+  "display": "standalone",
+  "background_color": "#FBF7F8",
+  "theme_color": "#2D1F2A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg?v=2",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
