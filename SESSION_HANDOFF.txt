@@ -1,0 +1,307 @@
+Travel App Session Handoff
+==========================
+
+專案位置
+--------
+/Users/cfh00587932/gitlab/travel-app
+
+回覆語言
+--------
+請一律使用繁體中文。
+
+
+目前專案狀態
+------------
+這是一個純靜態 HTML 專案，目前主要檔案：
+
+- index.html
+- manifest.json
+- icon.svg
+- kyoto_mrt_01.jpg
+- kyoto_mrt_02.jpg
+
+沒有 package.json，也沒有 npm dev script。
+
+本機啟動方式：
+
+cd /Users/cfh00587932/gitlab/travel-app
+python3 -m http.server 5550 --bind 127.0.0.1
+
+瀏覽器開：
+
+http://127.0.0.1:5550/index.html
+
+若 localhost 有問題，優先使用 127.0.0.1。
+
+
+Supabase 設定
+-------------
+Project URL:
+https://gixvaglwztzwjodgpyes.supabase.co
+
+Frontend publishable key:
+sb_publishable_shac4QlahjOzLSPJEyJV8g_4GramveT
+
+Travel group id:
+47560410-83ad-4478-b3ec-76837a47b0c5
+
+注意：
+- 這是 publishable key，可放前端。
+- 不可把 service_role key、Database password、sb_secret_* 放進前端或交接文件。
+
+
+Supabase Schema 進度
+--------------------
+已建立並規劃下列表：
+
+- public.travel_groups
+- public.group_members
+- public.trips
+- public.itinerary_days
+- public.itinerary_items
+- public.expenses
+- public.checklist_items
+
+已啟用 RLS。
+
+已用 group_members 控制同一個 travel group 的讀寫權限。
+
+已建立 helper function：
+
+- private.is_group_member(target_group_id uuid)
+- private.is_group_owner(target_group_id uuid)
+
+已補索引與 updated_at trigger。
+
+已建立兩位使用者，並加入同一個 group_members。
+
+目前 trips 表已匯入京都初始旅程：
+
+- city: 京都
+- country: 日本
+- flag: 🇯🇵
+- start_date: 2026-05-28
+- end_date: 2026-06-01
+- status: upcoming
+- legacy_key: kyoto2026
+
+
+前端目前已完成
+--------------
+檔案：index.html
+
+已完成第一階段 Supabase 接入：
+
+1. 旅程 tab 加入 Email/Password 登入區。
+2. Supabase SDK 改為進頁後非同步載入，避免 CDN 卡住造成白畫面。
+3. getTrips() 登入後改讀 Supabase public.trips。
+4. saveTrip() 登入後改 insert 到 Supabase public.trips。
+5. deleteTrip() 登入後改 delete Supabase public.trips。
+6. 未登入時保留本機 DEFAULT_TRIPS / localStorage fallback。
+7. 遠端 trips 資料只存在記憶體 cache，不寫回 localStorage，避免登出後殘留共享資料。
+8. 旅程卡片輸出有基本 escapeHtml，降低共享資料 XSS 風險。
+9. 新增旅程時可依城市/國家自動推測國旗。
+10. 國旗欄位有 datalist，可手動選常用國旗。
+11. 手動改過國旗後，不會再被自動覆蓋。
+12. 若國旗欄位只有半個 regional indicator，儲存時會依國家/城市自動修正。
+
+已加入密碼重設流程：
+
+1. 登入區有「忘記密碼」按鈕。
+2. 呼叫 supabase.auth.resetPasswordForEmail(email, { redirectTo })。
+3. 使用者從 recovery email 回來後，偵測 PASSWORD_RECOVERY event。
+4. 顯示「新密碼 / 再次輸入新密碼」表單。
+5. 呼叫 supabase.auth.updateUser({ password }) 更新密碼。
+
+
+Supabase 後台還需要確認
+-----------------------
+Authentication -> URL Configuration
+
+本機測試建議：
+
+Site URL:
+http://127.0.0.1:5550
+
+Redirect URLs:
+http://127.0.0.1:5550/**
+http://localhost:5550/**
+
+未來正式部署後，需要再加入正式網址，例如 GitHub Pages / GitLab Pages URL。
+
+
+已做過的驗證
+------------
+已用 Node 檢查 index.html script 語法：
+
+script block ok 1
+
+已跑：
+
+git diff --check
+
+無錯誤輸出。
+
+已確認本機 server 可回應：
+
+curl -I http://127.0.0.1:5550/index.html
+
+回應 200 OK。
+
+使用者已回報：
+
+- app 可正常開啟
+- Supabase 登入成功
+- 登入後可看到京都旅程
+
+
+建議接續測試
+------------
+1. 在旅程 tab 登入。
+2. 新增一筆測試旅程，例如：
+   - 城市：首爾
+   - 國家：韓國
+   - 國旗應自動變 🇰🇷
+3. 到 Supabase Table Editor -> trips 確認新增成功。
+4. 重新整理頁面，確認旅程仍存在。
+5. 用對方帳號登入，確認看得到同一筆旅程。
+6. 刪除測試旅程，確認 Supabase trips 同步刪除。
+7. 測試「忘記密碼」流程：
+   - 在 Email 欄輸入對方 email
+   - 點忘記密碼
+   - 收信後點 recovery link
+   - 回到 app 後設定新密碼
+   - 登出後用新密碼登入
+
+
+目前還沒做
+----------
+第二階段：active trip
+
+目標：
+- 點選旅程卡片後設定 activeTripId。
+- 首頁、行程、資訊、花費等頁面都根據 activeTripId 顯示資料。
+
+目前前端仍是京都固定內容：
+
+- DAY_DEFAULTS 寫死 day1 到 day5
+- 倒數日期寫死 2026-05-28
+- 行程頁 DOM 寫死五天 tabs
+- 花費仍用 localStorage key: kyoto_expenses
+- checklist 仍用 localStorage key: kyoto_checks
+- schedule 仍用 localStorage key: kyoto_sched_day*
+
+第三階段：搬 expenses
+
+目前 localStorage:
+- kyoto_expenses
+
+對應 Supabase:
+- public.expenses
+
+欄位 mapping 建議：
+- purpose -> title
+- currency -> currency
+- amount -> amount
+- paidBy -> paid_by_name
+- activeTripId -> trip_id
+- TRAVEL_GROUP_ID -> group_id
+
+第四階段：搬 itinerary
+
+目前 localStorage / defaults:
+- DAY_DEFAULTS
+- kyoto_sched_day1 ... kyoto_sched_day5
+
+對應 Supabase:
+- public.itinerary_days
+- public.itinerary_items
+
+欄位 mapping 建議：
+- day1/day2... -> itinerary_days.day_number 或 itinerary_items.day_key
+- item.title -> itinerary_items.title
+- item.desc -> itinerary_items.description
+- item.tags -> itinerary_items.tags jsonb
+- item.mapQ -> itinerary_items.map_query
+- item.lat -> itinerary_items.lat
+- item.lng -> itinerary_items.lng
+- item.extra -> itinerary_items.metadata.extra
+
+注意：
+- 目前前端 day tabs 寫死 5 天。
+- 若未來不同旅程有 3 天、7 天、10 天，需要重構成動態 day tabs。
+
+第五階段：搬 checklist
+
+目前 localStorage:
+- kyoto_checks
+
+目前只存 boolean array，沒有儲存 label。
+
+對應 Supabase:
+- public.checklist_items
+
+搬遷時要從 DOM 的 .check-item 抓文字 label，變成一列一個 checklist item。
+
+
+已知風險 / 注意事項
+-------------------
+1. index.html 是單檔且很大，內含 base64 圖片，修改時要避免破壞 script 結尾。
+2. 現有部分行程/花費仍使用 innerHTML，之後接共享資料庫前要繼續補 escape 或改成 textContent。
+3. Supabase RLS 只允許 authenticated 且屬於 group_members 的使用者讀寫。
+4. 若登入成功但看不到旅程，優先檢查：
+   - 使用者是否在 Authentication -> Users
+   - 使用者 UUID 是否在 public.group_members
+   - group_id 是否為 47560410-83ad-4478-b3ec-76837a47b0c5
+   - trips.group_id 是否相同
+5. Supabase 預設寄信服務有頻率限制，密碼重設測試不要短時間寄太多封。
+6. 正式上線前，建議設定自訂 SMTP。
+
+
+常用查詢
+--------
+確認 group members:
+
+select
+  tg.id as group_id,
+  tg.name as group_name,
+  gm.user_id,
+  gm.role
+from public.travel_groups tg
+join public.group_members gm
+  on gm.group_id = tg.id
+order by tg.created_at desc;
+
+確認 trips:
+
+select
+  id,
+  group_id,
+  city,
+  country,
+  flag,
+  start_date,
+  end_date,
+  status,
+  tags,
+  legacy_key
+from public.trips
+order by created_at desc;
+
+確認 RLS:
+
+select
+  tablename,
+  rowsecurity
+from pg_tables
+where schemaname = 'public'
+  and tablename in (
+    'travel_groups',
+    'group_members',
+    'trips',
+    'itinerary_days',
+    'itinerary_items',
+    'expenses',
+    'checklist_items'
+  );
+

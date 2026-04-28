@@ -1635,8 +1635,8 @@
     /* ══════════════════════
        HISTORY PAGE
        ══════════════════════ */
-    .history-add-btn {
-      display: flex;
+	    .history-add-btn {
+	      display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
@@ -1654,10 +1654,94 @@
       width: calc(100% - 40px);
       box-shadow: var(--shadow-btn);
       transition: all 0.3s ease;
-    }
-    .history-add-btn:active { transform: scale(0.98); }
+	    }
+	    .history-add-btn:active { transform: scale(0.98); }
 
-    .trip-card {
+	    .history-auth {
+	      margin: 0 20px 12px;
+	      padding: 14px;
+	      background: var(--white);
+	      border: 1px solid var(--border);
+	      border-radius: var(--radius-lg);
+	      box-shadow: var(--shadow-sm);
+	    }
+	    .history-auth-main {
+	      display: flex;
+	      align-items: center;
+	      justify-content: space-between;
+	      gap: 12px;
+	      margin-bottom: 10px;
+	    }
+	    .history-auth-title {
+	      font-family: var(--font-serif);
+	      font-size: 16px;
+	      font-weight: 700;
+	      color: var(--fg);
+	      line-height: 1.2;
+	    }
+	    .history-auth-status {
+	      font-size: 12px;
+	      color: var(--muted-fg);
+	      margin-top: 3px;
+	    }
+	    .history-auth-form {
+	      display: grid;
+	      grid-template-columns: 1fr;
+	      gap: 8px;
+	    }
+	    .history-auth-tools {
+	      display: grid;
+	      grid-template-columns: 1fr auto;
+	      gap: 8px;
+	      align-items: center;
+	    }
+	    .history-auth-actions {
+	      display: flex;
+	      gap: 8px;
+	    }
+	    .history-auth-btn {
+	      width: 100%;
+	      padding: 12px 14px;
+	      background: var(--fg);
+	      color: var(--bg);
+	      border: none;
+	      border-radius: var(--radius-pill);
+	      font-family: var(--font-sans);
+	      font-size: 13px;
+	      font-weight: 600;
+	    }
+	    .history-auth-btn.ghost {
+	      width: auto;
+	      padding: 12px 14px;
+	      background: var(--white);
+	      color: var(--muted-fg);
+	      border: 1px solid var(--border);
+	      white-space: nowrap;
+	    }
+	    .history-auth-btn.secondary {
+	      width: auto;
+	      padding: 9px 13px;
+	      background: var(--muted-bg);
+	      color: var(--muted-fg);
+	      border: 1px solid var(--border);
+	    }
+	    .history-auth-note {
+	      font-size: 11px;
+	      color: var(--muted-fg);
+	      line-height: 1.5;
+	    }
+	    .trip-loading {
+	      margin: 0 20px 14px;
+	      padding: 18px;
+	      background: var(--white);
+	      border: 1px solid var(--border);
+	      border-radius: var(--radius-lg);
+	      color: var(--muted-fg);
+	      font-size: 13px;
+	      text-align: center;
+	    }
+
+	    .trip-card {
       background: var(--white);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
@@ -1823,8 +1907,9 @@
       transition: border-color 0.25s;
     }
     .form-input:focus { border-color: var(--primary); }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .form-select {
+	    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+	    .form-row.country-flag { grid-template-columns: minmax(0, 1fr) 96px; }
+	    .form-select {
       width: 100%;
       padding: 12px 14px;
       background: var(--white);
@@ -1908,14 +1993,41 @@
   </div>
 
   <!-- Stats bar -->
-  <div class="history-stats" id="history-stats">
-    <div class="hstat"><div class="hstat-num" id="stat-trips">1</div><div class="hstat-label">趟旅程</div></div>
-    <div class="hstat"><div class="hstat-num" id="stat-countries">1</div><div class="hstat-label">個國家</div></div>
-    <div class="hstat"><div class="hstat-num" id="stat-days">4</div><div class="hstat-label">旅遊天數</div></div>
-  </div>
+	  <div class="history-stats" id="history-stats">
+	    <div class="hstat"><div class="hstat-num" id="stat-trips">1</div><div class="hstat-label">趟旅程</div></div>
+	    <div class="hstat"><div class="hstat-num" id="stat-countries">1</div><div class="hstat-label">個國家</div></div>
+	    <div class="hstat"><div class="hstat-num" id="stat-days">4</div><div class="hstat-label">旅遊天數</div></div>
+	  </div>
 
-  <!-- Add button -->
-  <button class="history-add-btn" onclick="openModal()">＋ 新增旅程</button>
+	  <div class="history-auth" id="history-auth">
+	    <div class="history-auth-main">
+	      <div>
+	        <div class="history-auth-title">Supabase</div>
+	        <div class="history-auth-status" id="auth-status">未登入</div>
+	      </div>
+	      <div class="history-auth-actions">
+	        <button class="history-auth-btn secondary" id="auth-logout" style="display:none;" onclick="logoutSupabase()">登出</button>
+	      </div>
+	    </div>
+	    <div class="history-auth-form" id="auth-form">
+	      <input class="form-input" id="auth-email" type="email" placeholder="Email" autocomplete="email">
+	      <input class="form-input" id="auth-password" type="password" placeholder="Password" autocomplete="current-password">
+	      <div class="history-auth-tools">
+	        <button class="history-auth-btn" id="auth-login" onclick="loginSupabase()">登入</button>
+	        <button class="history-auth-btn ghost" id="auth-forgot" onclick="requestPasswordReset()">忘記密碼</button>
+	      </div>
+	    </div>
+	    <div class="history-auth-form" id="auth-reset-form" style="display:none;">
+	      <input class="form-input" id="auth-new-password" type="password" placeholder="新密碼（至少 8 碼）" autocomplete="new-password">
+	      <input class="form-input" id="auth-new-password-confirm" type="password" placeholder="再次輸入新密碼" autocomplete="new-password">
+	      <button class="history-auth-btn" id="auth-update-password" onclick="updateRecoveredPassword()">更新密碼</button>
+	      <button class="history-auth-btn ghost" onclick="cancelPasswordRecovery()">取消</button>
+	      <div class="history-auth-note">請從密碼重設信件回到這個頁面後再設定新密碼。</div>
+	    </div>
+	  </div>
+
+	  <!-- Add button -->
+	  <button class="history-add-btn" onclick="openModal()">＋ 新增旅程</button>
 
   <!-- Trip list -->
   <div id="trip-list"></div>
@@ -1933,17 +2045,41 @@
     <div class="modal-handle"></div>
     <div class="modal-title">新增旅程 ✈</div>
     <div class="modal-form">
-      <div class="form-group">
-        <label class="form-label">目的地城市</label>
-        <input class="form-input" id="f-city" type="text" placeholder="例：巴黎、首爾、東京">
-      </div>
-      <div class="form-group">
-        <label class="form-label">國家 + 旗幟 emoji</label>
-        <div class="form-row">
-          <input class="form-input" id="f-country" type="text" placeholder="例：法國">
-          <input class="form-input" id="f-flag" type="text" placeholder="🇫🇷">
-        </div>
-      </div>
+	      <div class="form-group">
+	        <label class="form-label">目的地城市</label>
+	        <input class="form-input" id="f-city" type="text" placeholder="例：巴黎、首爾、東京" oninput="syncFlagFromCountry()">
+	      </div>
+	      <div class="form-group">
+	        <label class="form-label">國家 + 旗幟 emoji</label>
+	        <div class="form-row country-flag">
+	          <input class="form-input" id="f-country" type="text" placeholder="例：法國" list="country-options" oninput="syncFlagFromCountry()">
+	          <input class="form-input" id="f-flag" type="text" placeholder="🇫🇷" list="flag-options" autocomplete="off" oninput="markFlagEdited()">
+	        </div>
+	        <datalist id="country-options">
+	          <option value="台灣"></option>
+	          <option value="日本"></option>
+	          <option value="韓國"></option>
+	          <option value="法國"></option>
+	          <option value="英國"></option>
+	          <option value="美國"></option>
+	          <option value="泰國"></option>
+	          <option value="越南"></option>
+	          <option value="新加坡"></option>
+	          <option value="澳洲"></option>
+	        </datalist>
+	        <datalist id="flag-options">
+	          <option value="🇹🇼">台灣</option>
+	          <option value="🇯🇵">日本</option>
+	          <option value="🇰🇷">韓國</option>
+	          <option value="🇫🇷">法國</option>
+	          <option value="🇬🇧">英國</option>
+	          <option value="🇺🇸">美國</option>
+	          <option value="🇹🇭">泰國</option>
+	          <option value="🇻🇳">越南</option>
+	          <option value="🇸🇬">新加坡</option>
+	          <option value="🇦🇺">澳洲</option>
+	        </datalist>
+	      </div>
       <div class="form-group">
         <label class="form-label">日期</label>
         <div class="form-row">
@@ -3370,50 +3506,213 @@
   updateCountdown();
   setInterval(updateCountdown, 60000);
 
-  /* ─── Travel History ─── */
-  const DEFAULT_TRIPS = [
-    {
-      id: 'kyoto2026',
+	  /* ─── Travel History ─── */
+	  const SUPABASE_SDK_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+	  const SUPABASE_URL = 'https://gixvaglwztzwjodgpyes.supabase.co';
+	  const SUPABASE_ANON_KEY = 'sb_publishable_shac4QlahjOzLSPJEyJV8g_4GramveT';
+	  const TRAVEL_GROUP_ID = '47560410-83ad-4478-b3ec-76837a47b0c5';
+	  let supabaseClient = null;
+	  let supabaseSdkPromise = null;
+	  let currentUser = null;
+	  let isPasswordRecoveryMode = false;
+	  let tripsCache = null;
+	  let flagManuallyEdited = false;
+
+	  const COUNTRY_FLAGS = [
+	    { flag: '🇹🇼', keys: ['台灣', '臺灣', 'taiwan', 'tw', '台北', 'taipei'] },
+	    { flag: '🇯🇵', keys: ['日本', 'japan', 'jp', '東京', 'tokyo', '京都', 'kyoto', '大阪', 'osaka'] },
+	    { flag: '🇰🇷', keys: ['韓國', '南韓', 'korea', 'southkorea', 'kr', '首爾', 'seoul', '釜山', 'busan'] },
+	    { flag: '🇫🇷', keys: ['法國', 'france', 'fr', '巴黎', 'paris'] },
+	    { flag: '🇬🇧', keys: ['英國', 'uk', 'unitedkingdom', 'britain', 'london', '倫敦'] },
+	    { flag: '🇺🇸', keys: ['美國', 'usa', 'us', 'unitedstates', 'america', '紐約', 'newyork', '洛杉磯', 'losangeles'] },
+	    { flag: '🇹🇭', keys: ['泰國', 'thailand', 'th', '曼谷', 'bangkok'] },
+	    { flag: '🇻🇳', keys: ['越南', 'vietnam', 'vn', '河內', 'hanoi', '胡志明', 'hochiminh'] },
+	    { flag: '🇸🇬', keys: ['新加坡', 'singapore', 'sg'] },
+	    { flag: '🇲🇾', keys: ['馬來西亞', 'malaysia', 'my', '吉隆坡', 'kualalumpur'] },
+	    { flag: '🇮🇩', keys: ['印尼', '印度尼西亞', 'indonesia', 'id', '峇里', 'bali'] },
+	    { flag: '🇵🇭', keys: ['菲律賓', 'philippines', 'ph', '馬尼拉', 'manila'] },
+	    { flag: '🇭🇰', keys: ['香港', 'hongkong', 'hk'] },
+	    { flag: '🇲🇴', keys: ['澳門', 'macau', 'macao', 'mo'] },
+	    { flag: '🇨🇳', keys: ['中國', 'china', 'cn', '上海', 'shanghai', '北京', 'beijing'] },
+	    { flag: '🇦🇺', keys: ['澳洲', '澳大利亞', 'australia', 'au', '雪梨', 'sydney', '墨爾本', 'melbourne'] },
+	    { flag: '🇳🇿', keys: ['紐西蘭', '新西蘭', 'newzealand', 'nz', '奧克蘭', 'auckland'] },
+	    { flag: '🇨🇦', keys: ['加拿大', 'canada', 'ca', '溫哥華', 'vancouver', '多倫多', 'toronto'] },
+	    { flag: '🇮🇹', keys: ['義大利', '意大利', 'italy', 'it', '羅馬', 'rome', '米蘭', 'milan'] },
+	    { flag: '🇪🇸', keys: ['西班牙', 'spain', 'es', '馬德里', 'madrid', '巴塞隆納', 'barcelona'] },
+	    { flag: '🇩🇪', keys: ['德國', 'germany', 'de', '柏林', 'berlin', '慕尼黑', 'munich'] },
+	    { flag: '🇨🇭', keys: ['瑞士', 'switzerland', 'ch', '蘇黎世', 'zurich'] },
+	    { flag: '🇳🇱', keys: ['荷蘭', 'netherlands', 'holland', 'nl', '阿姆斯特丹', 'amsterdam'] }
+	  ];
+
+	  const DEFAULT_TRIPS = [
+	    {
+	      id: 'kyoto2026',
       city: '京都',
       country: '日本',
       flag: '🇯🇵',
       start: '2026-05-28',
       end: '2026-06-01',
       status: 'upcoming',
-      tags: ['寺廟神社', 'agete購物', '婚戒', '環球影城', '抹茶', '古著']
-    }
-  ];
+	      tags: ['寺廟神社', 'agete購物', '婚戒', '環球影城', '抹茶', '古著']
+	    }
+	  ];
 
-  function getTrips() {
-    try {
-      const saved = localStorage.getItem('travel_trips');
-      return saved ? JSON.parse(saved) : DEFAULT_TRIPS;
-    } catch(e) { return DEFAULT_TRIPS; }
-  }
-  function saveTrips(trips) {
-    try { localStorage.setItem('travel_trips', JSON.stringify(trips)); } catch(e) {}
-  }
+	  function getSupabaseClient() {
+	    if (!window.supabase || !window.supabase.createClient) return null;
+	    if (!supabaseClient) {
+	      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+	    }
+	    return supabaseClient;
+	  }
 
-  function calcDays(start, end) {
-    const d = (new Date(end) - new Date(start)) / 86400000;
-    return Math.max(1, Math.round(d));
-  }
+	  function loadSupabaseSdk() {
+	    if (window.supabase && window.supabase.createClient) return Promise.resolve(true);
+	    if (supabaseSdkPromise) return supabaseSdkPromise;
+
+	    supabaseSdkPromise = new Promise(resolve => {
+	      const script = document.createElement('script');
+	      script.src = SUPABASE_SDK_URL;
+	      script.async = true;
+	      script.onload = () => resolve(true);
+	      script.onerror = () => resolve(false);
+	      document.head.appendChild(script);
+	    });
+
+	    return supabaseSdkPromise;
+	  }
+
+	  function getLocalTrips() {
+	    try {
+	      const saved = localStorage.getItem('travel_trips');
+	      return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_TRIPS));
+	    } catch(e) { return JSON.parse(JSON.stringify(DEFAULT_TRIPS)); }
+	  }
+
+	  function saveTrips(trips) {
+	    try { localStorage.setItem('travel_trips', JSON.stringify(trips)); } catch(e) {}
+	  }
+
+	  function tripFromRow(row) {
+	    return {
+	      id: row.id,
+	      city: row.city,
+	      country: row.country || '',
+	      flag: row.flag || '🗺',
+	      start: row.start_date,
+	      end: row.end_date,
+	      status: row.status || 'planning',
+	      tags: Array.isArray(row.tags) ? row.tags : [],
+	      legacyKey: row.legacy_key || ''
+	    };
+	  }
+
+	  async function getTrips() {
+	    const client = getSupabaseClient();
+	    if (!client || !currentUser) return getLocalTrips();
+	    if (tripsCache) return tripsCache;
+
+	    const { data, error } = await client
+	      .from('trips')
+	      .select('id, city, country, flag, start_date, end_date, status, tags, legacy_key')
+	      .eq('group_id', TRAVEL_GROUP_ID);
+
+	    if (error) {
+	      console.warn('Supabase trips load failed:', error);
+	      return getLocalTrips();
+	    }
+
+	    const trips = (data || []).map(tripFromRow);
+	    tripsCache = trips;
+	    return trips;
+	  }
+
+	  function calcDays(start, end) {
+	    const d = (new Date(end) - new Date(start)) / 86400000;
+	    if (!Number.isFinite(d)) return 1;
+	    return Math.max(1, Math.round(d));
+	  }
   function formatDate(d) {
     if (!d) return '';
     const dt = new Date(d + 'T00:00:00');
     return dt.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', year: 'numeric' });
   }
-  function statusLabel(s) {
-    return { upcoming: '即將出發 🌱', completed: '已完成 ✓', planning: '規劃中 💭' }[s] || s;
-  }
+	  function statusLabel(s) {
+	    return { upcoming: '即將出發 🌱', completed: '已完成 ✓', planning: '規劃中 💭' }[s] || s;
+	  }
 
-  function renderTrips() {
-    const trips = getTrips();
-    const list = document.getElementById('trip-list');
-    const empty = document.getElementById('history-empty');
-    list.innerHTML = '';
+	  function safeStatus(status) {
+	    return ['upcoming', 'completed', 'planning'].includes(status) ? status : 'planning';
+	  }
 
-    if (trips.length === 0) {
+	  function escapeHtml(value) {
+	    return String(value ?? '')
+	      .replace(/&/g, '&amp;')
+	      .replace(/</g, '&lt;')
+	      .replace(/>/g, '&gt;')
+	      .replace(/"/g, '&quot;')
+	      .replace(/'/g, '&#39;');
+	  }
+
+	  function escapeJsArg(value) {
+	    return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+	  }
+
+	  function normalizeFlagText(value) {
+	    return String(value || '').toLowerCase().replace(/[\s,_\-+，。・·.]/g, '');
+	  }
+
+	  function inferFlag(country, city) {
+	    const text = normalizeFlagText(`${country || ''}${city || ''}`);
+	    if (!text) return '';
+	    const match = COUNTRY_FLAGS.find(item => item.keys.some(key => text.includes(normalizeFlagText(key))));
+	    return match ? match.flag : '';
+	  }
+
+	  function isPartialRegionalFlag(value) {
+	    const chars = Array.from(String(value || '').trim());
+	    if (chars.length !== 1) return false;
+	    const code = chars[0].codePointAt(0);
+	    return code >= 0x1F1E6 && code <= 0x1F1FF;
+	  }
+
+	  function getTripFlag(rawFlag, country, city) {
+	    const flag = String(rawFlag || '').trim();
+	    if (!flag || isPartialRegionalFlag(flag)) return inferFlag(country, city) || '🗺';
+	    return inferFlag(flag) || flag;
+	  }
+
+	  function syncFlagFromCountry(force = false) {
+	    const countryInput = document.getElementById('f-country');
+	    const cityInput = document.getElementById('f-city');
+	    const flagInput = document.getElementById('f-flag');
+	    if (!countryInput || !cityInput || !flagInput) return;
+	    if (!force && flagManuallyEdited && flagInput.value.trim()) return;
+
+	    const inferred = inferFlag(countryInput.value, cityInput.value);
+	    if (inferred) flagInput.value = inferred;
+	  }
+
+	  function markFlagEdited() {
+	    const flagInput = document.getElementById('f-flag');
+	    flagManuallyEdited = !!(flagInput && flagInput.value.trim());
+	  }
+
+	  async function renderTrips() {
+	    const list = document.getElementById('trip-list');
+	    const empty = document.getElementById('history-empty');
+	    if (!list || !empty) return;
+
+	    list.innerHTML = '<div class="trip-loading">載入旅程中...</div>';
+	    let trips = [];
+	    try {
+	      trips = await getTrips();
+	    } catch(e) {
+	      console.warn('Render trips failed:', e);
+	      trips = getLocalTrips();
+	    }
+	    list.innerHTML = '';
+
+	    if (trips.length === 0) {
       empty.style.display = 'block';
       document.getElementById('stat-trips').textContent = '0';
       document.getElementById('stat-countries').textContent = '0';
@@ -3430,77 +3729,359 @@
     document.getElementById('stat-countries').textContent = countries;
     document.getElementById('stat-days').textContent = totalDays || calcDays(trips[0].start, trips[0].end);
 
-    // Sort: upcoming first, then planning, then completed
-    const order = { upcoming: 0, planning: 1, completed: 2 };
-    [...trips].sort((a,b) => (order[a.status]||2)-(order[b.status]||2) || new Date(b.start)-new Date(a.start))
-    .forEach(trip => {
-      const days = calcDays(trip.start, trip.end);
-      const tagsHtml = (trip.tags || []).map(t =>
-        `<span class="trip-highlight-tag">${t}</span>`).join('');
-      list.innerHTML += `
-        <div class="trip-card">
-          <div class="trip-card-header">
-            <div class="trip-flag">${trip.flag || '🗺'}</div>
-            <div class="trip-meta">
-              <div class="trip-name">${trip.city}${trip.country ? '，' + trip.country : ''}</div>
-              <div class="trip-dates">${formatDate(trip.start)} — ${formatDate(trip.end)}</div>
-              <span class="trip-status ${trip.status}">${statusLabel(trip.status)}</span>
-            </div>
-          </div>
-          ${tagsHtml ? `<div class="trip-highlights">${tagsHtml}</div>` : ''}
-          <div class="trip-card-footer">
-            <div class="trip-stat"><div class="trip-stat-num">${days}</div><div class="trip-stat-label">天</div></div>
-            <div class="trip-stat"><div class="trip-stat-num">${trip.flag || '🌍'}</div><div class="trip-stat-label">${trip.country || '—'}</div></div>
-            <div class="trip-stat"><div class="trip-stat-num">${new Date(trip.start).getFullYear()}</div><div class="trip-stat-label">年份</div></div>
-            <button class="trip-delete-btn" onclick="deleteTrip('${trip.id}')" title="刪除">✕</button>
-          </div>
-        </div>`;
-    });
-  }
+	    // Sort: upcoming first, then planning, then completed
+	    const order = { upcoming: 0, planning: 1, completed: 2 };
+	    list.innerHTML = [...trips].sort((a,b) => (order[a.status]||2)-(order[b.status]||2) || new Date(b.start)-new Date(a.start))
+	    .map(trip => {
+	      const days = calcDays(trip.start, trip.end);
+	      const status = safeStatus(trip.status);
+	      const country = trip.country ? `，${escapeHtml(trip.country)}` : '';
+	      const year = new Date(trip.start + 'T00:00:00').getFullYear();
+	      const tagsHtml = (trip.tags || []).map(t =>
+	        `<span class="trip-highlight-tag">${escapeHtml(t)}</span>`).join('');
+	      return `
+	        <div class="trip-card">
+	          <div class="trip-card-header">
+	            <div class="trip-flag">${escapeHtml(trip.flag || '🗺')}</div>
+	            <div class="trip-meta">
+	              <div class="trip-name">${escapeHtml(trip.city)}${country}</div>
+	              <div class="trip-dates">${formatDate(trip.start)} — ${formatDate(trip.end)}</div>
+	              <span class="trip-status ${status}">${statusLabel(status)}</span>
+	            </div>
+	          </div>
+	          ${tagsHtml ? `<div class="trip-highlights">${tagsHtml}</div>` : ''}
+	          <div class="trip-card-footer">
+	            <div class="trip-stat"><div class="trip-stat-num">${days}</div><div class="trip-stat-label">天</div></div>
+	            <div class="trip-stat"><div class="trip-stat-num">${escapeHtml(trip.flag || '🌍')}</div><div class="trip-stat-label">${escapeHtml(trip.country || '—')}</div></div>
+	            <div class="trip-stat"><div class="trip-stat-num">${Number.isFinite(year) ? year : '—'}</div><div class="trip-stat-label">年份</div></div>
+	            <button class="trip-delete-btn" onclick="deleteTrip('${escapeJsArg(trip.id)}')" title="刪除">✕</button>
+	          </div>
+	        </div>`;
+	    }).join('');
+	  }
 
-  function deleteTrip(id) {
-    if (!confirm('確定要刪除這筆旅遊記錄嗎？')) return;
-    const trips = getTrips().filter(t => t.id !== id);
-    saveTrips(trips);
-    renderTrips();
-  }
+	  async function deleteTrip(id) {
+	    if (!confirm('確定要刪除這筆旅遊記錄嗎？')) return;
+	    const client = getSupabaseClient();
+	    if (client && currentUser) {
+	      const { error } = await client
+	        .from('trips')
+	        .delete()
+	        .eq('id', id)
+	        .eq('group_id', TRAVEL_GROUP_ID);
 
-  /* ─── Modal ─── */
-  function openModal() {
-    document.getElementById('trip-modal').classList.add('open');
-    document.body.style.overflow = 'hidden';
-    // reset form
-    ['f-city','f-country','f-flag','f-start','f-end','f-tags'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
-    document.getElementById('f-status').value = 'upcoming';
-  }
+	      if (error) {
+	        alert('刪除失敗，請稍後再試');
+	        console.warn('Supabase trip delete failed:', error);
+	        return;
+	      }
+	      tripsCache = null;
+	    } else {
+	      const trips = getLocalTrips().filter(t => t.id !== id);
+	      saveTrips(trips);
+	    }
+	    await renderTrips();
+	  }
+
+	  /* ─── Modal ─── */
+	  function openModal() {
+	    if (!currentUser) {
+	      alert('請先登入後再新增旅程');
+	      const emailInput = document.getElementById('auth-email');
+	      if (emailInput) emailInput.focus();
+	      return;
+	    }
+	    document.getElementById('trip-modal').classList.add('open');
+	    document.body.style.overflow = 'hidden';
+	    // reset form
+	    ['f-city','f-country','f-flag','f-start','f-end','f-tags'].forEach(id => {
+	      document.getElementById(id).value = '';
+	    });
+	    flagManuallyEdited = false;
+	    document.getElementById('f-status').value = 'upcoming';
+	  }
   function closeModal() {
     document.getElementById('trip-modal').classList.remove('open');
     document.body.style.overflow = '';
   }
-  function handleOverlayClick(e) {
-    if (e.target === document.getElementById('trip-modal')) closeModal();
-  }
-  function saveTrip() {
-    const city    = document.getElementById('f-city').value.trim();
-    const country = document.getElementById('f-country').value.trim();
-    const flag    = document.getElementById('f-flag').value.trim();
+	  function handleOverlayClick(e) {
+	    if (e.target === document.getElementById('trip-modal')) closeModal();
+	  }
+	  async function saveTrip() {
+	    const city    = document.getElementById('f-city').value.trim();
+	    const country = document.getElementById('f-country').value.trim();
+	    const flag    = getTripFlag(document.getElementById('f-flag').value, country, city);
     const start   = document.getElementById('f-start').value;
     const end     = document.getElementById('f-end').value;
     const status  = document.getElementById('f-status').value;
-    const tagsRaw = document.getElementById('f-tags').value.trim();
-    if (!city || !start || !end) { alert('請填寫目的地和日期 🗺'); return; }
-    const tags = tagsRaw ? tagsRaw.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
-    const trips = getTrips();
-    trips.unshift({ id: Date.now().toString(), city, country, flag: flag || '🗺', start, end, status, tags });
-    saveTrips(trips);
-    closeModal();
-    renderTrips();
-  }
+	    const tagsRaw = document.getElementById('f-tags').value.trim();
+	    if (!city || !start || !end) { alert('請填寫目的地和日期 🗺'); return; }
+	    const tags = tagsRaw ? tagsRaw.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
 
-  // Init
-  renderTrips();
+	    const client = getSupabaseClient();
+	    if (!client || !currentUser) {
+	      alert('請先登入後再儲存旅程');
+	      return;
+	    }
+
+	    const { error } = await client.from('trips').insert({
+	      group_id: TRAVEL_GROUP_ID,
+	      city,
+	      country,
+	      flag,
+	      start_date: start,
+	      end_date: end,
+	      status,
+	      tags
+	    });
+
+	    if (error) {
+	      alert('儲存失敗，請稍後再試');
+	      console.warn('Supabase trip insert failed:', error);
+	      return;
+	    }
+
+	    tripsCache = null;
+	    closeModal();
+	    await renderTrips();
+	  }
+
+	  function updateAuthUI(message) {
+	    const statusEl = document.getElementById('auth-status');
+	    const formEl = document.getElementById('auth-form');
+	    const resetFormEl = document.getElementById('auth-reset-form');
+	    const logoutBtn = document.getElementById('auth-logout');
+	    if (!statusEl || !formEl || !resetFormEl || !logoutBtn) return;
+
+	    if (isPasswordRecoveryMode) {
+	      statusEl.textContent = message || '請設定新密碼';
+	      formEl.style.display = 'none';
+	      resetFormEl.style.display = 'grid';
+	      logoutBtn.style.display = 'none';
+	      return;
+	    }
+
+	    if (currentUser) {
+	      statusEl.textContent = currentUser.email || '已登入';
+	      formEl.style.display = 'none';
+	      resetFormEl.style.display = 'none';
+	      logoutBtn.style.display = 'inline-flex';
+	    } else {
+	      statusEl.textContent = message || '未登入';
+	      formEl.style.display = 'grid';
+	      resetFormEl.style.display = 'none';
+	      logoutBtn.style.display = 'none';
+	    }
+	  }
+
+	  function setAuthBusy(isBusy) {
+	    const btn = document.getElementById('auth-login');
+	    if (!btn) return;
+	    btn.disabled = isBusy;
+	    btn.textContent = isBusy ? '登入中...' : '登入';
+	  }
+
+	  async function refreshAuth() {
+	    const sdkLoaded = await loadSupabaseSdk();
+	    if (!sdkLoaded) {
+	      currentUser = null;
+	      updateAuthUI('Supabase SDK 載入失敗');
+	      await renderTrips();
+	      return;
+	    }
+
+	    const client = getSupabaseClient();
+	    if (!client) {
+	      currentUser = null;
+	      updateAuthUI('Supabase SDK 載入失敗');
+	      await renderTrips();
+	      return;
+	    }
+
+	    const { data, error } = await client.auth.getSession();
+	    if (error) {
+	      currentUser = null;
+	      updateAuthUI('登入狀態讀取失敗');
+	      console.warn('Supabase session load failed:', error);
+	      return;
+	    }
+
+	    currentUser = data.session ? data.session.user : null;
+	    tripsCache = null;
+	    updateAuthUI();
+	    await renderTrips();
+	  }
+
+	  async function loginSupabase() {
+	    const email = document.getElementById('auth-email').value.trim();
+	    const password = document.getElementById('auth-password').value;
+
+	    if (!email || !password) { alert('請輸入 Email 和 Password'); return; }
+
+	    setAuthBusy(true);
+	    const sdkLoaded = await loadSupabaseSdk();
+	    if (!sdkLoaded) {
+	      setAuthBusy(false);
+	      alert('Supabase SDK 載入失敗，請確認網路連線後重試');
+	      return;
+	    }
+
+	    const client = getSupabaseClient();
+	    if (!client) {
+	      setAuthBusy(false);
+	      alert('Supabase SDK 尚未載入');
+	      return;
+	    }
+
+	    const { data, error } = await client.auth.signInWithPassword({ email, password });
+	    setAuthBusy(false);
+
+	    if (error) {
+	      alert('登入失敗，請確認帳號或密碼');
+	      console.warn('Supabase login failed:', error);
+	      return;
+	    }
+
+	    currentUser = data.user;
+	    isPasswordRecoveryMode = false;
+	    tripsCache = null;
+	    updateAuthUI();
+	    await renderTrips();
+	  }
+
+	  async function requestPasswordReset() {
+	    const email = document.getElementById('auth-email').value.trim();
+	    if (!email) {
+	      alert('請先輸入要重設密碼的 Email');
+	      document.getElementById('auth-email').focus();
+	      return;
+	    }
+
+	    const sdkLoaded = await loadSupabaseSdk();
+	    const client = sdkLoaded ? getSupabaseClient() : null;
+	    if (!client) {
+	      alert('Supabase SDK 載入失敗，請確認網路連線後重試');
+	      return;
+	    }
+
+	    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+	    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
+	    if (error) {
+	      alert('重設密碼信寄送失敗，請稍後再試');
+	      console.warn('Supabase password reset request failed:', error);
+	      return;
+	    }
+
+	    updateAuthUI('已寄出密碼重設信');
+	    alert('已寄出密碼重設信，請到信箱點擊連結後回來設定新密碼。');
+	  }
+
+	  function setPasswordBusy(isBusy) {
+	    const btn = document.getElementById('auth-update-password');
+	    if (!btn) return;
+	    btn.disabled = isBusy;
+	    btn.textContent = isBusy ? '更新中...' : '更新密碼';
+	  }
+
+	  async function updateRecoveredPassword() {
+	    const password = document.getElementById('auth-new-password').value;
+	    const confirmPassword = document.getElementById('auth-new-password-confirm').value;
+	    const client = getSupabaseClient();
+
+	    if (!client || !currentUser) {
+	      alert('密碼重設連結已失效，請重新寄送密碼重設信。');
+	      return;
+	    }
+	    if (password.length < 8) {
+	      alert('新密碼至少需要 8 碼');
+	      return;
+	    }
+	    if (password !== confirmPassword) {
+	      alert('兩次輸入的新密碼不一致');
+	      return;
+	    }
+
+	    setPasswordBusy(true);
+	    const { error } = await client.auth.updateUser({ password });
+	    setPasswordBusy(false);
+
+	    if (error) {
+	      alert('密碼更新失敗，請重新寄送密碼重設信再試一次。');
+	      console.warn('Supabase password update failed:', error);
+	      return;
+	    }
+
+	    document.getElementById('auth-new-password').value = '';
+	    document.getElementById('auth-new-password-confirm').value = '';
+	    isPasswordRecoveryMode = false;
+	    updateAuthUI('密碼已更新');
+	    alert('密碼已更新，之後請用新密碼登入。');
+	  }
+
+	  async function cancelPasswordRecovery() {
+	    isPasswordRecoveryMode = false;
+	    const client = getSupabaseClient();
+	    if (client) await client.auth.signOut();
+	    currentUser = null;
+	    tripsCache = null;
+	    updateAuthUI();
+	    await renderTrips();
+	  }
+
+	  async function logoutSupabase() {
+	    const client = getSupabaseClient();
+	    if (client) await client.auth.signOut();
+	    currentUser = null;
+	    isPasswordRecoveryMode = false;
+	    tripsCache = null;
+	    updateAuthUI();
+	    await renderTrips();
+	  }
+
+	  function initSupabaseAuth() {
+	    const passwordInput = document.getElementById('auth-password');
+	    if (passwordInput) {
+	      passwordInput.addEventListener('keydown', e => {
+	        if (e.key === 'Enter') loginSupabase();
+	      });
+	    }
+	    ['auth-new-password', 'auth-new-password-confirm'].forEach(id => {
+	      const input = document.getElementById(id);
+	      if (input) {
+	        input.addEventListener('keydown', e => {
+	          if (e.key === 'Enter') updateRecoveredPassword();
+	        });
+	      }
+	    });
+
+	    loadSupabaseSdk().then(isLoaded => {
+	      const client = isLoaded ? getSupabaseClient() : null;
+	      if (!client) {
+	        updateAuthUI('Supabase SDK 載入失敗');
+	        return;
+	      }
+
+	      client.auth.onAuthStateChange((event, session) => {
+		currentUser = session ? session.user : null;
+	        isPasswordRecoveryMode = event === 'PASSWORD_RECOVERY';
+		tripsCache = null;
+	        updateAuthUI(isPasswordRecoveryMode ? '請設定新密碼' : undefined);
+	        if (isPasswordRecoveryMode) {
+	          setTimeout(() => {
+	            const input = document.getElementById('auth-new-password');
+	            if (input) input.focus();
+	          }, 80);
+	        }
+		renderTrips();
+	      });
+	    });
+
+	    refreshAuth();
+	  }
+
+	  // Init
+	  initSupabaseAuth();
+	  renderTrips();
 
   /* ─── Unified Timeline + Map ─── */
 
