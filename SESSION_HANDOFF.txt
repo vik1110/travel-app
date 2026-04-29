@@ -15,6 +15,9 @@ Travel App Session Handoff
 這是一個純靜態 HTML 專案，目前主要檔案：
 
 - index.html
+- styles.css
+- app.js
+- assets/usj-express-pass.png
 - manifest.json
 - icon.svg
 - kyoto_mrt_01.jpg
@@ -88,7 +91,7 @@ Supabase Schema 進度
 
 前端目前已完成
 --------------
-檔案：index.html
+檔案：index.html / styles.css / app.js
 
 已完成第一階段 Supabase 接入：
 
@@ -113,6 +116,14 @@ Supabase Schema 進度
 4. 顯示「新密碼 / 再次輸入新密碼」表單。
 5. 呼叫 supabase.auth.updateUser({ password }) 更新密碼。
 
+已完成輕量拆分：
+
+1. index.html 保留 HTML 結構與外部資源引用。
+2. 原本 inline CSS 已拆到 styles.css。
+3. 原本底部 inline script 已拆到 app.js。
+4. 原本 inline base64 USJ 票券圖已拆到 assets/usj-express-pass.png。
+5. 為保留現有 onclick/oninput handler，相容性上仍使用一般 <script src="app.js"></script>，未改成 type="module"。
+
 
 Supabase 後台還需要確認
 -----------------------
@@ -132,9 +143,13 @@ http://localhost:5550/**
 
 已做過的驗證
 ------------
-已用 Node 檢查 index.html script 語法：
+已用 Node 檢查 app.js 語法：
 
-script block ok 1
+node --check app.js
+
+已確認拆分內容與原 index.html inline 內容一致：
+
+extraction parity ok
 
 已跑：
 
@@ -145,6 +160,9 @@ git diff --check
 已確認本機 server 可回應：
 
 curl -I http://127.0.0.1:5550/index.html
+curl -I http://127.0.0.1:5550/styles.css
+curl -I http://127.0.0.1:5550/app.js
+curl -I http://127.0.0.1:5550/assets/usj-express-pass.png
 
 回應 200 OK。
 
@@ -246,7 +264,7 @@ curl -I http://127.0.0.1:5550/index.html
 
 已知風險 / 注意事項
 -------------------
-1. index.html 是單檔且很大，內含 base64 圖片，修改時要避免破壞 script 結尾。
+1. 前端已從單檔拆成 index.html / styles.css / app.js / assets/usj-express-pass.png；修改時注意同步引用路徑。
 2. 現有部分行程/花費仍使用 innerHTML，之後接共享資料庫前要繼續補 escape 或改成 textContent。
 3. Supabase RLS 只允許 authenticated 且屬於 group_members 的使用者讀寫。
 4. 若登入成功但看不到旅程，優先檢查：
@@ -304,4 +322,3 @@ where schemaname = 'public'
     'expenses',
     'checklist_items'
   );
-
