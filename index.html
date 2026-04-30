@@ -3175,7 +3175,6 @@
   }
 
   // Init pinch-zoom when modals open
-  var _origOpenTicket = window.openTicket || function(){};
   function openTicket() {
     document.getElementById('ticket-overlay').classList.add('open');
     setTimeout(function(){ _initPinchZoom('ticket-overlay'); }, 50);
@@ -3567,7 +3566,6 @@
   }
 
   /* ─── Map ─── */
-  const LMAPS = {};
   function renderMap(dayId, items) {
     const container = document.getElementById('map-' + dayId);
     if (!container) return;
@@ -3779,9 +3777,6 @@
   renderExpenses();
 
   // ── Ticket lightbox ──
-  function openTicket() {
-    document.getElementById('ticket-overlay').classList.add('open');
-  }
   function closeTicket() {
     document.getElementById('ticket-overlay').classList.remove('open');
     _lbResetZoom('ticket-overlay');
