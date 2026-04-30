@@ -12,6 +12,8 @@
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     /* ══════════════════════════════════════
@@ -525,7 +527,56 @@
   
 
 
-    /* Timeline add controls */
+    /* Day map section */
+    .day-map-section {
+      margin: 0 20px 4px;
+    }
+    .day-map-header {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .day-map-container {
+      width: 100%;
+      height: 200px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      display: block;
+      border: 1px solid var(--border);
+      z-index: 1;
+      position: relative;
+    }
+    .day-map-container .leaflet-container {
+      border-radius: var(--radius-md);
+    }
+    /* Leaflet numbered markers */
+    .map-pin {
+      width: 26px; height: 26px;
+      background: var(--interactive);
+      border: 2px solid white;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 11px; font-weight: 700;
+      font-family: var(--font-sans);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      margin-left: -13px; margin-top: -13px;
+    }
+    .day-map-route-btn {
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px; margin-top: 8px; padding: 10px 16px;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-pill); color: var(--interactive);
+      font-size: 13px; font-weight: 600; text-decoration: none;
+      box-shadow: var(--shadow-xs);
+    }
+
+        /* Timeline add controls */
     .tl-add-wrap {
       padding: 0 20px 12px;
     }
@@ -2129,6 +2180,11 @@
       <div class="day-desc">飛往大阪，JR Haruka 前往京都，入住溫泉旅館，品嚐第一碗京都拉麵</div>
     </div>
         <div class="timeline" id="timeline-day1"></div>
+    <div class="day-map-section">
+      <div class="day-map-header">📍 今日路線 — KIX → 京都</div>
+      <div id="map-day1" class="day-map-container"></div>
+      <a id="gmaps-day1" href="#" target="_blank" class="day-map-route-btn">🗺 在 Google Maps 查看完整路線</a>
+    </div>
     <div class="tl-add-wrap">
       <button class="tl-add-btn" onclick="toggleAddForm('day1')">＋ 新增行程</button>
       <div class="tl-add-form" id="add-form-day1" style="display:none">
@@ -2152,6 +2208,11 @@
       <div class="day-desc">早起出發！任天堂世界 + 哈利波特魔法世界，傍晚泡溫泉回來</div>
     </div>
         <div class="timeline" id="timeline-day2"></div>
+    <div class="day-map-section">
+      <div class="day-map-header">📍 今日路線 — 京都 → USJ</div>
+      <div id="map-day2" class="day-map-container"></div>
+      <a id="gmaps-day2" href="#" target="_blank" class="day-map-route-btn">🗺 在 Google Maps 查看完整路線</a>
+    </div>
     <div class="tl-add-wrap">
       <button class="tl-add-btn" onclick="toggleAddForm('day2')">＋ 新增行程</button>
       <div class="tl-add-form" id="add-form-day2" style="display:none">
@@ -2175,6 +2236,11 @@
       <div class="day-desc">清水寺、石板坡道小店、抹茶甜點，京都最精華的傳統氛圍</div>
     </div>
         <div class="timeline" id="timeline-day3"></div>
+    <div class="day-map-section">
+      <div class="day-map-header">📍 今日路線 — 清水寺 → 二三年坂 → 高台寺 → 寺町</div>
+      <div id="map-day3" class="day-map-container"></div>
+      <a id="gmaps-day3" href="#" target="_blank" class="day-map-route-btn">🗺 在 Google Maps 查看完整路線</a>
+    </div>
     <div class="tl-add-wrap">
       <button class="tl-add-btn" onclick="toggleAddForm('day3')">＋ 新增行程</button>
       <div class="tl-add-form" id="add-form-day3" style="display:none">
@@ -2198,6 +2264,11 @@
       <div class="day-desc">高島屋銀座白石・下午茶・Kyoto Loft・% Arabica・大丸京都 agete 輕奢珠寶</div>
     </div>
         <div class="timeline" id="timeline-day4"></div>
+    <div class="day-map-section">
+      <div class="day-map-header">📍 今日路線 — 高島屋 → mina京都 → 大丸京都</div>
+      <div id="map-day4" class="day-map-container"></div>
+      <a id="gmaps-day4" href="#" target="_blank" class="day-map-route-btn">🗺 在 Google Maps 查看完整路線</a>
+    </div>
     <div class="tl-add-wrap">
       <button class="tl-add-btn" onclick="toggleAddForm('day4')">＋ 新增行程</button>
       <div class="tl-add-form" id="add-form-day4" style="display:none">
@@ -2221,6 +2292,11 @@
       <div class="day-desc">退房後仍有充裕時間，大阪道頓堀午餐，再悠閒前往機場</div>
     </div>
         <div class="timeline" id="timeline-day5"></div>
+    <div class="day-map-section">
+      <div class="day-map-header">📍 今日路線 — 京都 → 大阪 → KIX</div>
+      <div id="map-day5" class="day-map-container"></div>
+      <a id="gmaps-day5" href="#" target="_blank" class="day-map-route-btn">🗺 在 Google Maps 查看完整路線</a>
+    </div>
     <div class="tl-add-wrap">
       <button class="tl-add-btn" onclick="toggleAddForm('day5')">＋ 新增行程</button>
       <div class="tl-add-form" id="add-form-day5" style="display:none">
@@ -3488,6 +3564,49 @@
       const cls = t.c ? ' ' + t.c : '';
       return `<span class="tl-tag${cls}">${t.l}</span>`;
     }).join('');
+  }
+
+  /* ─── Map ─── */
+  const LMAPS = {};
+  function renderMap(dayId, items) {
+    const container = document.getElementById('map-' + dayId);
+    if (!container) return;
+    if (LMAPS[dayId]) { LMAPS[dayId].invalidateSize(); return; }
+
+    const pts = (items || []).filter(i => i.lat && i.lng);
+    if (pts.length === 0) return;
+
+    const map = L.map(container, { zoomControl: true, scrollWheelZoom: false });
+    LMAPS[dayId] = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18, attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    const bounds = [];
+    pts.forEach((item, i) => {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="map-pin">${i + 1}</div>`,
+        iconSize: [26, 26], iconAnchor: [13, 13]
+      });
+      L.marker([item.lat, item.lng], { icon })
+        .addTo(map)
+        .bindPopup(`<strong>${item.title}</strong>`);
+      bounds.push([item.lat, item.lng]);
+    });
+
+    if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [24, 24] });
+    } else {
+      map.setView(bounds[0], 14);
+    }
+
+    const gmLink = document.getElementById('gmaps-' + dayId);
+    if (gmLink && pts.length > 0) {
+      const wps = pts.map(p => encodeURIComponent(p.mapQ || '')).join('/');
+      gmLink.href = 'https://www.google.com/maps/dir/' + wps;
+    }
   }
 
   function renderTimeline(dayId) {
