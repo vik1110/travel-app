@@ -3307,6 +3307,10 @@
     document.getElementById(id).classList.add('active');
     btn.classList.add('active');
     btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    setTimeout(function() {
+      if (LMAPS[id]) LMAPS[id].invalidateSize();
+      else renderMap(id);
+    }, 50);
   }
   /* ─── Daily Tips → jump to itinerary day ─── */
   function goToDay(dayId) {
@@ -3567,6 +3571,7 @@
 
   /* ─── Map ─── */
   function renderMap(dayId, items) {
+    if (typeof L === 'undefined') return;
     const container = document.getElementById('map-' + dayId);
     if (!container) return;
     if (LMAPS[dayId]) { LMAPS[dayId].invalidateSize(); return; }
@@ -3671,15 +3676,7 @@
   // Initialize all timelines; maps init lazily when day is shown
   ['day1','day2','day3','day4','day5'].forEach(renderTimeline);
 
-  // Re-invalidate map size when switching days
-  const _origSwitchDay = window.switchDay;
-  window.switchDay = function(dayId, btn) {
-    if (_origSwitchDay) _origSwitchDay(dayId, btn);
-    setTimeout(() => {
-      if (LMAPS[dayId]) LMAPS[dayId].invalidateSize();
-      else renderMap(dayId);
-    }, 50);
-  };
+  // map size invalidated inside switchDay
 
 
   /* ─── Expense Tracker ─── */
