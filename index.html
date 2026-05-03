@@ -3303,12 +3303,8 @@
     if (name === 'itinerary') {
       setTimeout(function() {
         const activeDay = document.querySelector('.day-content.active');
-        if (activeDay) {
-          const dayId = activeDay.id;
-          if (LMAPS[dayId]) LMAPS[dayId].invalidateSize();
-          else renderMap(dayId, getSchedule(dayId));
-        }
-      }, 80);
+        if (activeDay) renderTimeline(activeDay.id);
+      }, 50);
     }
   }
   function switchDay(id, btn) {
