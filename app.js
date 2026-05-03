@@ -212,11 +212,20 @@
     document.getElementById('nav-' + name).classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (name === 'history') renderTrips();
+    if (name === 'itinerary') {
+      setTimeout(() => {
+        const activeDay = document.querySelector('.day-content.active');
+        if (activeDay && typeof refreshDayMap === 'function') refreshDayMap(activeDay.id);
+      }, 80);
+    }
+    if (name === 'info' && typeof renderExpenses === 'function') renderExpenses();
   }
   function switchDay(id, btn) {
+    const dayEl = document.getElementById(id);
+    if (!dayEl || !btn) return;
     document.querySelectorAll('.day-content').forEach(d => d.classList.remove('active'));
     document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+    dayEl.classList.add('active');
     btn.classList.add('active');
     btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }
@@ -225,9 +234,8 @@
     switchPage('itinerary');
     setTimeout(() => {
       const tabs = document.querySelectorAll('.day-tab');
-      const dayMap = { day1: 0, day2: 1, day3: 2, day4: 3, day5: 4 };
-      const idx = dayMap[dayId];
-      if (idx !== undefined && tabs[idx]) switchDay(dayId, tabs[idx]);
+      const idx = Math.max(0, Number(String(dayId).replace('day', '')) - 1);
+      if (Number.isFinite(idx) && tabs[idx]) switchDay(dayId, tabs[idx]);
     }, 120);
   }
   function switchCat(id, btn) {
@@ -238,32 +246,95 @@
   }
 
   /* ─── Checkboxes ─── */
-  function toggleCheck(item) {
-    item.classList.toggle('checked');
+  function setCheckItemState(item, isChecked) {
+    if (!item) return;
+    item.classList.toggle('checked', !!isChecked);
     const tick = item.querySelector('.check-tick');
-    tick.style.display = item.classList.contains('checked') ? 'block' : 'none';
-    try {
-      const items = document.querySelectorAll('.check-item');
-      const state = Array.from(items).map(i => i.classList.contains('checked'));
-      localStorage.setItem('kyoto_checks', JSON.stringify(state));
-    } catch(e) {}
+    if (tick) tick.style.display = isChecked ? 'block' : 'none';
   }
-  try {
-    const saved = JSON.parse(localStorage.getItem('kyoto_checks') || '[]');
-    document.querySelectorAll('.check-item').forEach((item, i) => {
-      if (saved[i]) {
-        item.classList.add('checked');
-        item.querySelector('.check-tick').style.display = 'block';
+
+  function getChecklistBlueprintFromDom() {
+    const items = Array.from(document.querySelectorAll('.check-item'));
+    if (items.length === 0) return DEFAULT_CHECKLIST_ITEMS;
+    return items.map((item, index) => ({
+      label: item.dataset.checkLabel || item.querySelector('.check-text')?.textContent.trim() || `項目 ${index + 1}`,
+      sub: item.querySelector('.check-sub')?.textContent.trim() || ''
+    }));
+  }
+
+  function getChecklistStateFromDom() {
+    return Array.from(document.querySelectorAll('.check-item')).map(i => i.classList.contains('checked'));
+  }
+
+  function getLocalChecklistState() {
+    try { return JSON.parse(localStorage.getItem(getTripStorageKey('checks')) || '[]'); } catch(e) { return []; }
+  }
+
+  function saveLocalChecklistState(state) {
+    try { localStorage.setItem(getTripStorageKey('checks'), JSON.stringify(state)); } catch(e) {}
+  }
+
+  async function toggleCheck(item) {
+    const tripId = activeTripId;
+    const nextState = !item.classList.contains('checked');
+    setCheckItemState(item, nextState);
+
+    const client = getSupabaseClient();
+    if (client && currentUser && tripId) {
+      const itemId = item.dataset.checkId;
+      if (!itemId) {
+        checklistCacheByTrip[tripId] = null;
+        checklistLoadPromisesByTrip[tripId] = null;
+        await getChecklistItems();
+        const matched = (checklistCacheByTrip[tripId] || []).find(row => row.label === item.dataset.checkLabel);
+        if (matched) item.dataset.checkId = matched.id;
       }
-    });
-  } catch(e) {}
+
+      const remoteId = item.dataset.checkId;
+      if (remoteId) {
+        const { error } = await client
+          .from('checklist_items')
+          .update({ checked: nextState })
+          .eq('id', remoteId)
+          .eq('group_id', TRAVEL_GROUP_ID)
+          .eq('trip_id', tripId);
+
+        if (error) {
+          setCheckItemState(item, !nextState);
+          alert('清單更新失敗，請稍後再試');
+          console.warn('Supabase checklist update failed:', error);
+          return;
+        }
+
+        if (checklistCacheByTrip[tripId]) {
+          checklistCacheByTrip[tripId] = checklistCacheByTrip[tripId].map(row =>
+            row.id === remoteId ? { ...row, checked: nextState } : row
+          );
+        }
+        return;
+      }
+    }
+
+    saveLocalChecklistState(getChecklistStateFromDom());
+  }
+
+  function applySavedChecks() {
+    renderChecklist();
+  }
 
   /* ─── Countdown ─── */
   function updateCountdown() {
-    const target = new Date('2026-05-28T14:20:00+08:00');
+    const trip = getActiveTrip();
+    const target = getTripCountdownTarget(trip);
     const diff = target - new Date();
     const el = document.getElementById('countdown-days');
     const txt = document.getElementById('countdown-text');
+    if (!el || !txt) return;
+    if (!trip || !target || Number.isNaN(target.getTime())) {
+      el.innerHTML = '<span class="accent">—</span>';
+      txt.textContent = '請先選擇旅程';
+      return;
+    }
     if (diff <= 0) {
       el.innerHTML = '<span class="accent">✈</span>';
       txt.textContent = '出發囉！旅程開始';
@@ -271,10 +342,9 @@
       const days = Math.floor(diff / 86400000);
       const hrs  = Math.floor((diff % 86400000) / 3600000);
       el.textContent = days;
-      txt.textContent = `天 ${hrs} 小時後出發 · May 28, 2026`;
+      txt.textContent = `天 ${hrs} 小時後出發 · ${formatTripDate(trip.start)}`;
     }
   }
-  updateCountdown();
   setInterval(updateCountdown, 60000);
 
 	  /* ─── Travel History ─── */
@@ -286,8 +356,72 @@
 	  let supabaseSdkPromise = null;
 	  let currentUser = null;
 	  let isPasswordRecoveryMode = false;
+	  const PASSWORD_RECOVERY_FLAG_KEY = 'travel_password_recovery_pending';
+	  let sawPasswordRecoveryUrlOnLoad = false;
+
+	  function isPasswordRecoveryUrl() {
+	    const markerText = `${window.location.search || ''}&${window.location.hash || ''}`.toLowerCase();
+	    return markerText.includes('type=recovery') ||
+	      markerText.includes('password-recovery=1') ||
+	      markerText.includes('mode=password-recovery');
+	  }
+
+	  sawPasswordRecoveryUrlOnLoad = isPasswordRecoveryUrl();
+	  if (sawPasswordRecoveryUrlOnLoad) {
+	    try {
+	      sessionStorage.setItem(PASSWORD_RECOVERY_FLAG_KEY, '1');
+	    } catch(e) {}
+	  }
+
+	  function setPasswordRecoveryMode(isActive) {
+	    isPasswordRecoveryMode = !!isActive;
+	    try {
+	      if (isPasswordRecoveryMode) {
+	        sessionStorage.setItem(PASSWORD_RECOVERY_FLAG_KEY, '1');
+	      } else {
+	        sessionStorage.removeItem(PASSWORD_RECOVERY_FLAG_KEY);
+	      }
+	    } catch(e) {}
+	  }
+
+	  function hasPendingPasswordRecovery() {
+	    if (sawPasswordRecoveryUrlOnLoad || isPasswordRecoveryUrl()) return true;
+	    try {
+	      return sessionStorage.getItem(PASSWORD_RECOVERY_FLAG_KEY) === '1';
+	    } catch(e) {
+	      return false;
+	    }
+	  }
+
+	  function clearPasswordRecoveryUrl() {
+	    if (!isPasswordRecoveryUrl()) return;
+	    try {
+	      window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
+	    } catch(e) {}
+	    sawPasswordRecoveryUrlOnLoad = false;
+	  }
 	  let tripsCache = null;
+	  let expensesCacheByTrip = {};
+	  let itineraryCacheByTrip = {};
+	  let itineraryLoadPromisesByTrip = {};
+	  let checklistCacheByTrip = {};
+	  let checklistLoadPromisesByTrip = {};
+	  let expenseRenderSeq = 0;
+	  let itineraryRenderSeq = 0;
+	  let checklistRenderSeq = 0;
+	  let activeTripId = null;
+	  let activeTrip = null;
 	  let flagManuallyEdited = false;
+	  const ACTIVE_TRIP_STORAGE_KEY = 'travel_active_trip_id';
+	  const ORIGINAL_INFO_HTML = document.getElementById('page-info')?.innerHTML || '';
+
+	  const DEFAULT_CHECKLIST_ITEMS = [
+	    { label: '護照、機票、住宿確認', sub: '出發前確認可離線查看' },
+	    { label: '交通票券與 USJ 票券', sub: 'JR / ICOCA / Express Pass' },
+	    { label: '現金、信用卡、退稅資料', sub: '小店多數仍以現金為主' },
+	    { label: '網路 SIM / Wi-Fi', sub: '抵達後可立即查路線' },
+	    { label: '雨具與舒適鞋', sub: '5 月底可能遇到梅雨' }
+	  ];
 
 	  const COUNTRY_FLAGS = [
 	    { flag: '🇹🇼', keys: ['台灣', '臺灣', 'taiwan', 'tw', '台北', 'taipei'] },
@@ -322,8 +456,9 @@
       country: '日本',
       flag: '🇯🇵',
       start: '2026-05-28',
-      end: '2026-06-01',
-      status: 'upcoming',
+	      end: '2026-06-01',
+	      status: 'upcoming',
+	      legacyKey: 'kyoto2026',
 	      tags: ['寺廟神社', 'agete購物', '婚戒', '環球影城', '抹茶', '古著']
 	    }
 	  ];
@@ -377,6 +512,16 @@
 	    };
 	  }
 
+	  function expenseFromRow(row) {
+	    return {
+	      id: row.id,
+	      purpose: row.title || '',
+	      currency: row.currency || 'JPY',
+	      amount: Number(row.amount) || 0,
+	      paidBy: row.paid_by_name || 'Vik'
+	    };
+	  }
+
 	  async function getTrips() {
 	    const client = getSupabaseClient();
 	    if (!client || !currentUser) return getLocalTrips();
@@ -395,6 +540,134 @@
 	    const trips = (data || []).map(tripFromRow);
 	    tripsCache = trips;
 	    return trips;
+	  }
+
+	  function getStoredActiveTripId() {
+	    try { return localStorage.getItem(ACTIVE_TRIP_STORAGE_KEY) || ''; } catch(e) { return ''; }
+	  }
+
+	  function persistActiveTripId(id) {
+	    try {
+	      if (id) localStorage.setItem(ACTIVE_TRIP_STORAGE_KEY, id);
+	      else localStorage.removeItem(ACTIVE_TRIP_STORAGE_KEY);
+	    } catch(e) {}
+	  }
+
+	  function sortTripsForDisplay(trips) {
+	    const order = { upcoming: 0, planning: 1, completed: 2 };
+	    return [...trips].sort((a, b) =>
+	      (order[a.status] ?? 2) - (order[b.status] ?? 2) ||
+	      new Date(b.start) - new Date(a.start)
+	    );
+	  }
+
+	  function findTripByAnyId(trips, id) {
+	    if (!id) return null;
+	    return (trips || []).find(t => t.id === id || t.legacyKey === id) || null;
+	  }
+
+	  function setActiveTripFromTrip(trip, shouldPersist = true) {
+	    activeTrip = trip || null;
+	    activeTripId = trip ? trip.id : null;
+	    if (shouldPersist) persistActiveTripId(activeTripId);
+	  }
+
+	  function ensureActiveTrip(trips) {
+	    if (!trips || trips.length === 0) {
+	      setActiveTripFromTrip(null);
+	      return null;
+	    }
+
+	    const storedId = getStoredActiveTripId();
+	    const selected =
+	      findTripByAnyId(trips, activeTripId) ||
+	      findTripByAnyId(trips, storedId) ||
+	      sortTripsForDisplay(trips)[0];
+
+	    setActiveTripFromTrip(selected);
+	    return selected;
+	  }
+
+	  function getActiveTrip() {
+	    return activeTrip || null;
+	  }
+
+	  async function setActiveTrip(id, options = {}) {
+	    let trips = [];
+	    try { trips = await getTrips(); } catch(e) { trips = getLocalTrips(); }
+	    const trip = findTripByAnyId(trips, id);
+	    if (!trip) return;
+
+	    setActiveTripFromTrip(trip);
+	    expenseRenderSeq += 1;
+	    itineraryRenderSeq += 1;
+	    checklistRenderSeq += 1;
+	    renderActiveTripUI(trips);
+	    updateTripCardSelection();
+	    if (options.navigate !== false) switchPage('home');
+	  }
+
+	  function isKyotoTrip(trip = getActiveTrip()) {
+	    if (!trip) return false;
+	    return trip.id === 'kyoto2026' || trip.legacyKey === 'kyoto2026';
+	  }
+
+	  function normalizeStorageKey(value) {
+	    return String(value || 'trip')
+	      .trim()
+	      .replace(/[^a-zA-Z0-9_-]/g, '_')
+	      .replace(/_+/g, '_')
+	      .replace(/^_+|_+$/g, '') || 'trip';
+	  }
+
+	  function getTripStoragePrefix(trip = getActiveTrip() || DEFAULT_TRIPS[0]) {
+	    if (isKyotoTrip(trip)) return 'kyoto';
+	    return 'trip_' + normalizeStorageKey(trip?.id || trip?.legacyKey || trip?.city || 'current');
+	  }
+
+	  function getTripStorageKey(suffix) {
+	    return `${getTripStoragePrefix()}_${suffix}`;
+	  }
+
+	  function parseTripDate(value) {
+	    if (!value) return null;
+	    const dt = new Date(value + 'T00:00:00');
+	    return Number.isNaN(dt.getTime()) ? null : dt;
+	  }
+
+	  function formatTripDate(value, options) {
+	    const dt = parseTripDate(value);
+	    if (!dt) return '';
+	    return dt.toLocaleDateString('zh-TW', options || { month: 'short', day: 'numeric', year: 'numeric' });
+	  }
+
+	  function formatTripDateShort(value) {
+	    return formatTripDate(value, { month: 'numeric', day: '2-digit' });
+	  }
+
+	  function getTripYear(trip) {
+	    const dt = parseTripDate(trip?.start);
+	    return dt ? dt.getFullYear() : '';
+	  }
+
+	  function getTripDayDates(trip = getActiveTrip()) {
+	    const start = parseTripDate(trip?.start);
+	    const end = parseTripDate(trip?.end);
+	    if (!start || !end || end < start) return [];
+
+	    const dates = [];
+	    const cursor = new Date(start);
+	    while (cursor <= end && dates.length < 31) {
+	      dates.push(new Date(cursor));
+	      cursor.setDate(cursor.getDate() + 1);
+	    }
+	    return dates;
+	  }
+
+	  function getTripCountdownTarget(trip) {
+	    if (!trip?.start) return null;
+	    if (isKyotoTrip(trip)) return new Date('2026-05-28T14:20:00+08:00');
+	    return parseTripDate(trip.start);
 	  }
 
 	  function calcDays(start, end) {
@@ -468,6 +741,231 @@
 	    flagManuallyEdited = !!(flagInput && flagInput.value.trim());
 	  }
 
+	  function renderActiveTripUI(trips = null) {
+	    if (trips) ensureActiveTrip(trips);
+	    const trip = getActiveTrip();
+
+	    renderHomeForTrip(trip);
+	    renderItinerary();
+	    renderInfoForTrip(trip);
+	    resetPayerSelection();
+	    applySavedChecks();
+	    renderExpenses();
+	  }
+
+	  function updateTripCardSelection() {
+	    document.querySelectorAll('.trip-card[data-trip-id]').forEach(card => {
+	      card.classList.toggle('active', card.dataset.tripId === activeTripId);
+	    });
+	  }
+
+	  function setHomeSectionVisibility(selector, isVisible) {
+	    const el = document.querySelector(selector);
+	    if (el) el.style.display = isVisible ? '' : 'none';
+	  }
+
+	  function renderHomeForTrip(trip) {
+	    if (!trip) return;
+
+	    const year = getTripYear(trip);
+	    const country = trip.country ? ` · ${trip.country}` : '';
+	    const dateRange = `${formatTripDate(trip.start)} — ${formatTripDate(trip.end)}`;
+	    const heroOverline = document.querySelector('.hero-overline');
+	    const heroTitle = document.querySelector('.hero-title');
+	    const heroSub = document.querySelector('.hero-sub');
+	    const cdDate = document.querySelector('.cd-date');
+
+	    if (heroOverline) {
+	      heroOverline.innerHTML = `<span class="gold-line"></span>${escapeHtml(trip.city)} Journey &nbsp;/&nbsp; ${escapeHtml(statusLabel(safeStatus(trip.status)).replace(/[🌱✓💭]/g, '').trim())}`;
+	    }
+	    if (heroTitle) heroTitle.innerHTML = `${escapeHtml(trip.city || '旅程')}<br><em>${escapeHtml(year || '')}</em>`;
+	    if (heroSub) heroSub.textContent = `${dateRange}${country}`;
+	    if (cdDate) cdDate.textContent = isKyotoTrip(trip) ? 'Thu, May 28 · CI172 · 14:20' : `${trip.flag || '✈'} ${dateRange}`;
+	    if (trip.city) document.title = `${trip.city} ${year || ''} — Yuhsuan's Journey`;
+
+	    const showKyotoDetails = isKyotoTrip(trip);
+	    setHomeSectionVisibility('.subway-btn-wrap', showKyotoDetails);
+	    setHomeSectionVisibility('.flight-dashboard', showKyotoDetails);
+	    setHomeSectionVisibility('.home-hotel-card', showKyotoDetails);
+
+	    renderWeatherCards(trip);
+	    renderDayThemeCards(trip);
+	    updateCountdown();
+	  }
+
+	  function renderWeatherCards(trip) {
+	    const scroll = document.querySelector('.weather-scroll');
+	    const note = document.querySelector('.weather-note');
+	    if (!scroll || !trip) return;
+
+	    const kyotoWeather = [
+	      { icon: '☀️', high: '28°', low: '20°', desc: '晴天' },
+	      { icon: '⛅', high: '27°', low: '19°', desc: '晴時多雲' },
+	      { icon: '🌤', high: '26°', low: '18°', desc: '多雲' },
+	      { icon: '🌦', high: '24°', low: '17°', desc: '偶陣雨' },
+	      { icon: '🌧', high: '23°', low: '17°', desc: '陣雨' }
+	    ];
+	    const dates = getTripDayDates(trip).slice(0, 7);
+	    const fallback = { icon: '☁️', high: '—', low: '—', desc: '待查' };
+
+	    scroll.innerHTML = dates.map((dt, i) => {
+	      const yyyyMmDd = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+	      const weather = isKyotoTrip(trip) ? (kyotoWeather[i] || fallback) : fallback;
+	      return `
+	        <div class="weather-card ${i === 0 ? 'today-card' : ''}">
+	          <div class="weather-date">${formatTripDateShort(yyyyMmDd)}</div>
+	          <div class="weather-day">${dt.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+	          <div class="weather-icon">${weather.icon}</div>
+	          <div class="weather-high">${weather.high}</div>
+	          <div class="weather-low">${weather.low}</div>
+	          <div class="weather-desc">${weather.desc}</div>
+	        </div>`;
+	    }).join('');
+
+	    if (note) {
+	      note.textContent = isKyotoTrip(trip)
+	        ? '📍 京都典型初夏天氣，請出發前確認最新預報'
+	        : `📍 ${trip.city} 天氣尚未接入即時預報，請出發前確認最新資訊`;
+	    }
+	  }
+
+	  function renderDayThemeCards(trip) {
+	    const scroll = document.querySelector('.tips-section .tips-scroll');
+	    if (!scroll || !trip) return;
+
+	    const kyotoThemes = [
+	      ['✈️', '抵達日 — Arrival', '飛往大阪 · JR Haruka 入住 · 第一碗京都拉麵'],
+	      ['🎢', '大阪環球影城 — USJ', '任天堂世界 · 哈利波特 · Minecart 快速通關'],
+	      ['⛩', '東山文化路線 — Higashiyama', '清水寺 · 二三年坂 · 抹茶午餐 · 高台寺 · 先斗町晚餐'],
+	      ['🛍', '文化 × 購物 — Shop & Explore', '銀座白石 · 下午茶 · Kyoto Loft · % Arabica · agete'],
+	      ['🏠', '返台日 — Departure', '退房 · 大阪道頓堀 · 關西機場 CI173']
+	    ];
+
+	    scroll.innerHTML = getTripDayDates(trip).map((dt, i) => {
+	      const dayId = `day${i + 1}`;
+	      const yyyyMmDd = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+	      const theme = isKyotoTrip(trip)
+	        ? (kyotoThemes[i] || ['🗓', `第 ${i + 1} 天`, ''])
+	        : ['🗓', `第 ${i + 1} 天 — ${trip.city}`, '尚未新增行程，點進每日行程開始安排'];
+	      return `
+	        <div class="tip-day-card" onclick="goToDay('${dayId}')">
+	          <div class="tip-day-num">${formatTripDateShort(yyyyMmDd)}<span>${theme[0]}</span></div>
+	          <div class="tip-day-body">
+	            <div class="tip-day-title">${escapeHtml(theme[1])}</div>
+	            <div class="tip-day-hint">${escapeHtml(theme[2])}</div>
+	          </div>
+	          <div class="tip-day-arrow">›</div>
+	        </div>`;
+	    }).join('');
+	  }
+
+	  function getExpenseFormHtml() {
+	    return `
+	      <div class="info-sec-title">💰 花費紀錄</div>
+	      <div class="expense-form">
+	        <div class="exp-row">
+	          <input class="exp-input" id="exp-purpose" type="text" placeholder="用途（例：午餐、車票、藥妝…）">
+	        </div>
+	        <div class="exp-row">
+	          <select class="exp-select" id="exp-currency">
+	            <option value="JPY">¥ JPY</option>
+	            <option value="TWD">$ TWD</option>
+	            <option value="USD">$ USD</option>
+	          </select>
+	          <input class="exp-input exp-amount" id="exp-amount" type="number" placeholder="金額" min="0" step="1">
+	        </div>
+	        <div class="exp-payer" id="exp-payer-btns">
+	          <button class="exp-payer-btn sel-vik" onclick="selectPayer('Vik',this)">👩 Vik</button>
+	          <button class="exp-payer-btn" onclick="selectPayer('Mike',this)">👨 Mike</button>
+	        </div>
+	        <button class="exp-add-btn" onclick="addExpense()">＋ 新增花費</button>
+	      </div>
+	      <div class="expense-list" id="expense-list"></div>
+	      <div class="expense-summary" id="expense-summary" style="display:none;"></div>`;
+	  }
+
+	  function getChecklistModeLabel() {
+	    return canUseRemoteChecklist() ? '儲存到 Supabase' : '本機暫存';
+	  }
+
+	  function getChecklistModeClass() {
+	    return canUseRemoteChecklist() ? 'remote' : 'local';
+	  }
+
+	  function getChecklistSub(label, index) {
+	    const defaults = DEFAULT_CHECKLIST_ITEMS;
+	    return defaults.find(item => item.label === label)?.sub || defaults[index]?.sub || '';
+	  }
+
+	  function checklistItemHtml(item, index) {
+	    const label = item.label || `項目 ${index + 1}`;
+	    const sub = item.sub || getChecklistSub(label, index);
+	    const checked = item.checked ? ' checked' : '';
+	    const checkId = item.id ? ` data-check-id="${escapeHtml(item.id)}"` : '';
+	    return `
+	        <div class="check-item${checked}" onclick="toggleCheck(this)" data-check-label="${escapeHtml(label)}"${checkId}>
+	          <div class="check-box"><span class="check-tick" style="display:${item.checked ? 'block' : 'none'};">✓</span></div>
+	          <div>
+	            <div class="check-text">${escapeHtml(label)}</div>
+	            ${sub ? `<div class="check-sub">${escapeHtml(sub)}</div>` : ''}
+	          </div>
+	        </div>`;
+	  }
+
+	  function getChecklistHtml(items = DEFAULT_CHECKLIST_ITEMS) {
+	    return `
+	      <div class="info-sec-title">✅ 準備清單</div>
+	      <div class="check-section">
+	        <div class="check-section-header">
+	          <span>Travel Checklist</span>
+	          <span class="tl-storage-mode ${getChecklistModeClass()}" id="check-storage-mode">${getChecklistModeLabel()}</span>
+	        </div>
+	        <div id="checklist-list">
+	          ${items.map((item, index) => checklistItemHtml(item, index)).join('')}
+	        </div>
+	      </div>`;
+	  }
+
+	  function renderInfoForTrip(trip) {
+	    const page = document.getElementById('page-info');
+	    if (!page || !trip) return;
+
+	    if (isKyotoTrip(trip)) {
+	      if (page.dataset.genericTripInfo === '1') {
+	        page.innerHTML = ORIGINAL_INFO_HTML;
+	        page.dataset.genericTripInfo = '0';
+	      }
+	      return;
+	    }
+
+	    const dateRange = `${formatTripDate(trip.start)} — ${formatTripDate(trip.end)}`;
+	    page.dataset.genericTripInfo = '1';
+	    page.innerHTML = `
+	      <div class="page-header">
+	        <div class="overline"><span class="gold-line"></span>ℹ️ Info</div>
+	        <h2>📋 旅遊<em>資訊</em></h2>
+	      </div>
+	      <div class="info-banner"><strong>${escapeHtml(trip.city)}</strong> — ${escapeHtml(dateRange)}</div>
+
+	      <div class="info-sec-title">🧭 Trip Summary</div>
+	      <div class="hotel-card">
+	        <div class="hotel-name">${escapeHtml(trip.flag || '🗺')} ${escapeHtml(trip.city || '未命名旅程')}</div>
+	        <div class="hotel-sub">${escapeHtml(trip.country || '國家未設定')}</div>
+	        <div class="info-row"><span class="info-row-label">日期</span><span class="info-row-value">${escapeHtml(dateRange)}</span></div>
+	        <div class="info-row"><span class="info-row-label">狀態</span><span class="info-row-value gold">${escapeHtml(statusLabel(safeStatus(trip.status)))}</span></div>
+	        <div class="info-row"><span class="info-row-label">天數</span><span class="info-row-value">${getTripDayDates(trip).length || 1} 天</span></div>
+	      </div>
+
+	      <div class="info-sec-title">📝 Notes</div>
+	      <div class="tip-row"><div class="tip-icon-col">✈</div><div class="tip-body"><strong>航班/交通</strong>：尚未設定，可先在每日行程加入交通段。</div></div>
+	      <div class="tip-row"><div class="tip-icon-col">🏨</div><div class="tip-body"><strong>住宿</strong>：尚未設定，第三階段後可再搬成遠端資料。</div></div>
+	      <div class="tip-row"><div class="tip-icon-col">💡</div><div class="tip-body"><strong>提醒</strong>：花費與行程已依目前旅程分開儲存在本機。</div></div>
+
+	      ${getChecklistHtml()}
+	      ${getExpenseFormHtml()}
+	    `;
+	  }
+
 	  async function renderTrips() {
 	    const list = document.getElementById('trip-list');
 	    const empty = document.getElementById('history-empty');
@@ -488,9 +986,11 @@
       document.getElementById('stat-trips').textContent = '0';
       document.getElementById('stat-countries').textContent = '0';
       document.getElementById('stat-days').textContent = '0';
+      setActiveTripFromTrip(null);
       return;
     }
     empty.style.display = 'none';
+    ensureActiveTrip(trips);
 
     // Stats
     const countries = new Set(trips.map(t => t.country)).size;
@@ -500,24 +1000,24 @@
     document.getElementById('stat-countries').textContent = countries;
     document.getElementById('stat-days').textContent = totalDays || calcDays(trips[0].start, trips[0].end);
 
-	    // Sort: upcoming first, then planning, then completed
-	    const order = { upcoming: 0, planning: 1, completed: 2 };
-	    list.innerHTML = [...trips].sort((a,b) => (order[a.status]||2)-(order[b.status]||2) || new Date(b.start)-new Date(a.start))
+	    list.innerHTML = sortTripsForDisplay(trips)
 	    .map(trip => {
 	      const days = calcDays(trip.start, trip.end);
 	      const status = safeStatus(trip.status);
 	      const country = trip.country ? `，${escapeHtml(trip.country)}` : '';
 	      const year = new Date(trip.start + 'T00:00:00').getFullYear();
+	      const isActive = trip.id === activeTripId;
 	      const tagsHtml = (trip.tags || []).map(t =>
 	        `<span class="trip-highlight-tag">${escapeHtml(t)}</span>`).join('');
 	      return `
-	        <div class="trip-card">
+	        <div class="trip-card ${isActive ? 'active' : ''}" data-trip-id="${escapeHtml(trip.id)}" onclick="setActiveTrip('${escapeJsArg(trip.id)}')">
 	          <div class="trip-card-header">
 	            <div class="trip-flag">${escapeHtml(trip.flag || '🗺')}</div>
 	            <div class="trip-meta">
 	              <div class="trip-name">${escapeHtml(trip.city)}${country}</div>
 	              <div class="trip-dates">${formatDate(trip.start)} — ${formatDate(trip.end)}</div>
 	              <span class="trip-status ${status}">${statusLabel(status)}</span>
+	              ${isActive ? '<span class="trip-status active">目前旅程</span>' : ''}
 	            </div>
 	          </div>
 	          ${tagsHtml ? `<div class="trip-highlights">${tagsHtml}</div>` : ''}
@@ -525,10 +1025,11 @@
 	            <div class="trip-stat"><div class="trip-stat-num">${days}</div><div class="trip-stat-label">天</div></div>
 	            <div class="trip-stat"><div class="trip-stat-num">${escapeHtml(trip.flag || '🌍')}</div><div class="trip-stat-label">${escapeHtml(trip.country || '—')}</div></div>
 	            <div class="trip-stat"><div class="trip-stat-num">${Number.isFinite(year) ? year : '—'}</div><div class="trip-stat-label">年份</div></div>
-	            <button class="trip-delete-btn" onclick="deleteTrip('${escapeJsArg(trip.id)}')" title="刪除">✕</button>
+	            <button class="trip-delete-btn" onclick="event.stopPropagation();deleteTrip('${escapeJsArg(trip.id)}')" title="刪除">✕</button>
 	          </div>
 	        </div>`;
 	    }).join('');
+	    renderActiveTripUI(trips);
 	  }
 
 	  async function deleteTrip(id) {
@@ -551,6 +1052,12 @@
 	      const trips = getLocalTrips().filter(t => t.id !== id);
 	      saveTrips(trips);
 	    }
+	    delete expensesCacheByTrip[id];
+	    delete itineraryCacheByTrip[id];
+	    delete itineraryLoadPromisesByTrip[id];
+	    delete checklistCacheByTrip[id];
+	    delete checklistLoadPromisesByTrip[id];
+	    if (id === activeTripId) setActiveTripFromTrip(null);
 	    await renderTrips();
 	  }
 
@@ -678,7 +1185,15 @@
 	    }
 
 	    currentUser = data.session ? data.session.user : null;
+	    setPasswordRecoveryMode(!!currentUser && hasPendingPasswordRecovery());
 	    tripsCache = null;
+	    expensesCacheByTrip = {};
+	    itineraryCacheByTrip = {};
+	    itineraryLoadPromisesByTrip = {};
+	    checklistCacheByTrip = {};
+	    checklistLoadPromisesByTrip = {};
+	    itineraryRenderSeq += 1;
+	    checklistRenderSeq += 1;
 	    updateAuthUI();
 	    await renderTrips();
 	  }
@@ -714,8 +1229,16 @@
 	    }
 
 	    currentUser = data.user;
-	    isPasswordRecoveryMode = false;
+	    setPasswordRecoveryMode(false);
+	    clearPasswordRecoveryUrl();
 	    tripsCache = null;
+	    expensesCacheByTrip = {};
+	    itineraryCacheByTrip = {};
+	    itineraryLoadPromisesByTrip = {};
+	    checklistCacheByTrip = {};
+	    checklistLoadPromisesByTrip = {};
+	    itineraryRenderSeq += 1;
+	    checklistRenderSeq += 1;
 	    updateAuthUI();
 	    await renderTrips();
 	  }
@@ -738,7 +1261,8 @@
 	    const redirectTo = `${window.location.origin}${window.location.pathname}`;
 	    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
 	    if (error) {
-	      alert('重設密碼信寄送失敗，請稍後再試');
+	      const message = error.message ? `\n\n${error.message}` : '';
+	      alert(`重設密碼信寄送失敗，請稍後再試${message}`);
 	      console.warn('Supabase password reset request failed:', error);
 	      return;
 	    }
@@ -784,17 +1308,26 @@
 
 	    document.getElementById('auth-new-password').value = '';
 	    document.getElementById('auth-new-password-confirm').value = '';
-	    isPasswordRecoveryMode = false;
+	    setPasswordRecoveryMode(false);
+	    clearPasswordRecoveryUrl();
 	    updateAuthUI('密碼已更新');
 	    alert('密碼已更新，之後請用新密碼登入。');
 	  }
 
 	  async function cancelPasswordRecovery() {
-	    isPasswordRecoveryMode = false;
+	    setPasswordRecoveryMode(false);
+	    clearPasswordRecoveryUrl();
 	    const client = getSupabaseClient();
 	    if (client) await client.auth.signOut();
 	    currentUser = null;
 	    tripsCache = null;
+	    expensesCacheByTrip = {};
+	    itineraryCacheByTrip = {};
+	    itineraryLoadPromisesByTrip = {};
+	    checklistCacheByTrip = {};
+	    checklistLoadPromisesByTrip = {};
+	    itineraryRenderSeq += 1;
+	    checklistRenderSeq += 1;
 	    updateAuthUI();
 	    await renderTrips();
 	  }
@@ -803,8 +1336,16 @@
 	    const client = getSupabaseClient();
 	    if (client) await client.auth.signOut();
 	    currentUser = null;
-	    isPasswordRecoveryMode = false;
+	    setPasswordRecoveryMode(false);
+	    clearPasswordRecoveryUrl();
 	    tripsCache = null;
+	    expensesCacheByTrip = {};
+	    itineraryCacheByTrip = {};
+	    itineraryLoadPromisesByTrip = {};
+	    checklistCacheByTrip = {};
+	    checklistLoadPromisesByTrip = {};
+	    itineraryRenderSeq += 1;
+	    checklistRenderSeq += 1;
 	    updateAuthUI();
 	    await renderTrips();
 	  }
@@ -834,8 +1375,15 @@
 
 	      client.auth.onAuthStateChange((event, session) => {
 		currentUser = session ? session.user : null;
-	        isPasswordRecoveryMode = event === 'PASSWORD_RECOVERY';
+	        setPasswordRecoveryMode(event === 'PASSWORD_RECOVERY' || (!!session && hasPendingPasswordRecovery()));
 		tripsCache = null;
+		expensesCacheByTrip = {};
+		itineraryCacheByTrip = {};
+		itineraryLoadPromisesByTrip = {};
+		checklistCacheByTrip = {};
+		checklistLoadPromisesByTrip = {};
+		itineraryRenderSeq += 1;
+		checklistRenderSeq += 1;
 	        updateAuthUI(isPasswordRecoveryMode ? '請設定新密碼' : undefined);
 	        if (isPasswordRecoveryMode) {
 	          setTimeout(() => {
@@ -850,13 +1398,9 @@
 	    refreshAuth();
 	  }
 
-	  // Init
-	  initSupabaseAuth();
-	  renderTrips();
-
   /* ─── Unified Timeline + Map ─── */
 
-  const DAY_DEFAULTS = {
+	  const DAY_DEFAULTS = {
     day1: [
       {id:'d1_1',time:'14:20',title:'CI172 台北桃園出發',desc:'第二航廈出發 · 飛行時間約 2h45m',tags:[{l:'交通'}],mapQ:'桃園國際機場+第二航廈',lat:25.0772,lng:121.2325},
       {id:'d1_2',time:'18:05',title:'抵達大阪關西國際機場',desc:'入境後搭乘 JR Haruka 特急往京都駅（約 75 分鐘，¥3,490）<br>可在機場購買 ICOCA IC 卡',tags:[{l:'交通'},{l:'KIX→京都',c:'gold'}],mapQ:'関西国際空港',lat:34.4347,lng:135.2440},
@@ -892,10 +1436,43 @@
       {id:'d5_4',time:'12:30',title:'道頓堀 · 心齋橋',desc:'午餐大阪燒 or 章魚燒，心齋橋藥妝最後補購，Glico 看板合照',tags:[{l:'大阪'},{l:'美食'}],mapQ:'道頓堀+大阪',lat:34.6687,lng:135.5017},
       {id:'d5_5',time:'16:30',title:'前往 KIX 關西機場',desc:'難波搭南海特急 Rapit 約 45 分，或 JR Haruka',tags:[{l:'交通'}],mapQ:'関西国際空港',lat:34.4347,lng:135.2440},
       {id:'d5_6',time:'19:05',title:'CI173 大阪關西 → 台北桃園',desc:'21:10 抵達桃園，飛行時間約 3 小時',tags:[{l:'回家',c:'dark'}],mapQ:'桃園國際機場',lat:25.0772,lng:121.2325}
-    ]
-  };
+	    ]
+	  };
 
-  const LMAPS = {}; // dayId → Leaflet map instance
+	  const KYOTO_DAY_META = {
+	    day1: {
+	      overline: '✈️ Day One · Thursday',
+	      title: '🛬 抵達日 — <em>Arrival</em>',
+	      desc: '飛往大阪，JR Haruka 前往京都，入住溫泉旅館，品嚐第一碗京都拉麵',
+	      mapHeader: '📍 今日路線 — KIX → 京都'
+	    },
+	    day2: {
+	      overline: '🎢 Day Two · Friday',
+	      title: '🌟 大阪環球影城 — <em>USJ</em>',
+	      desc: '早起出發！任天堂世界 + 哈利波特魔法世界，傍晚泡溫泉回來',
+	      mapHeader: '📍 今日路線 — 京都 → USJ'
+	    },
+	    day3: {
+	      overline: '⛩ Day Three · Saturday',
+	      title: '🏯 東山文化路線 — <em>Higashiyama</em>',
+	      desc: '清水寺、石板坡道小店、抹茶甜點，京都最精華的傳統氛圍',
+	      mapHeader: '📍 今日路線 — 清水寺 → 二三年坂 → 高台寺 → 寺町'
+	    },
+	    day4: {
+	      overline: '🛍 Day Four · Sunday',
+	      title: '🎌 文化 × 購物 — <em>Shop &amp; Explore</em>',
+	      desc: '高島屋銀座白石・下午茶・Kyoto Loft・% Arabica・大丸京都 agete 輕奢珠寶',
+	      mapHeader: '📍 今日路線 — 高島屋 → mina京都 → 大丸京都'
+	    },
+	    day5: {
+	      overline: '🏠 Day Five · Monday',
+	      title: '✈️ 返台日 — <em>Departure</em>',
+	      desc: '退房後仍有充裕時間，大阪道頓堀午餐，再悠閒前往機場',
+	      mapHeader: '📍 今日路線 — 京都 → 大阪 → KIX'
+	    }
+	  };
+
+	  const LMAPS = {}; // dayId → Leaflet map instance
 
   // 強制清除 day3/day4 舊快取（行程對調後 bust cache）
   if (!localStorage.getItem('kyoto_reset_swap_v4')) {
@@ -904,66 +1481,486 @@
     localStorage.setItem('kyoto_reset_swap_v4', '1');
   }
 
-  function getSchedule(dayId) {
-    try {
-      const saved = JSON.parse(localStorage.getItem('kyoto_sched_' + dayId));
-      if (saved && saved.length > 0) return saved;
-    } catch(e) {}
-    return JSON.parse(JSON.stringify(DAY_DEFAULTS[dayId] || []));
-  }
-  function saveSchedule(dayId, items) {
-    try { localStorage.setItem('kyoto_sched_' + dayId, JSON.stringify(items)); } catch(e) {}
-  }
+	  function dateToYmd(dt) {
+	    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+	  }
 
-  function tagHtml(tags) {
-    return (tags||[]).map(t => {
-      const cls = t.c ? ' ' + t.c : '';
-      return `<span class="tl-tag${cls}">${t.l}</span>`;
-    }).join('');
-  }
+	  function getDayNumber(dayId) {
+	    const num = Number(String(dayId || '').replace('day', ''));
+	    return Number.isFinite(num) && num > 0 ? num : 1;
+	  }
 
-  function renderTimeline(dayId) {
-    const tl = document.getElementById('timeline-' + dayId);
-    if (!tl) return;
-    const items = getSchedule(dayId);
-    items.sort((a,b) => (a.time||'99:99').localeCompare(b.time||'99:99'));
-    tl.innerHTML = '';
-    items.forEach((item, idx) => {
-      const isCustom = !item.id.startsWith('d');
-      const div = document.createElement('div');
-      div.className = 'tl-item' + (isCustom ? ' custom-item' : '');
-      div.dataset.id = item.id;
-      const mapLink = item.mapQ
-        ? `<a class="tl-map-link" href="https://maps.google.com/?q=${item.mapQ}" target="_blank">📍 查看地圖</a>`
-        : '';
-      const extra = item.extra ? item.extra : '';
-      const ticketBtn = item.id === 'd2_3'
-        ? `<button class="tl-ticket-btn" onclick="openTicket()">🎫 查看快速通關券</button>`
-        : '';
-      div.innerHTML = `
-        <div class="tl-time-col">${item.time||'—'}</div>
-        <div class="tl-body">
-          <div class="tl-title">${item.title}</div>
-          <div class="tl-desc">${item.desc||''}</div>
-          ${item.tags&&item.tags.length ? `<div class="tl-tags">${tagHtml(item.tags)}</div>` : ''}
-          ${extra}
-          ${ticketBtn}
-          ${mapLink}
-          <button class="tl-del-btn" onclick="deleteItem('${dayId}','${item.id}')">✕ 刪除</button>
-        </div>`;
-      tl.appendChild(div);
-    });
+	  function cloneScheduleItems(items) {
+	    return JSON.parse(JSON.stringify(items || []));
+	  }
+
+	  function normalizeScheduleTime(value) {
+	    const text = String(value || '');
+	    return /^\d{2}:\d{2}/.test(text) ? text.slice(0, 5) : text;
+	  }
+
+	  function normalizeTimeField(input) {
+	    if (!input) return '';
+	    const text = String(input.value || '').trim();
+	    if (!text) return '';
+
+	    const compact = text.replace(/\D/g, '');
+	    let hour = '';
+	    let minute = '';
+	    if (/^\d{1,2}:\d{1,2}$/.test(text)) {
+	      const parts = text.split(':');
+	      hour = parts[0];
+	      minute = parts[1];
+	    } else if (compact.length <= 2) {
+	      hour = compact;
+	      minute = '00';
+	    } else {
+	      hour = compact.slice(0, -2);
+	      minute = compact.slice(-2);
+	    }
+
+	    const hh = Math.min(23, Math.max(0, Number(hour) || 0));
+	    const mm = Math.min(59, Math.max(0, Number(minute) || 0));
+	    const normalized = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+	    input.value = normalized;
+	    return normalized;
+	  }
+
+	  function sortScheduleItems(items) {
+	    return [...(items || [])].sort((a, b) =>
+	      (a.time || '99:99').localeCompare(b.time || '99:99') ||
+	      String(a.title || '').localeCompare(String(b.title || ''), 'zh-Hant')
+	    );
+	  }
+
+	  function getLocalSchedule(dayId) {
+	    try {
+	      const raw = localStorage.getItem(getTripStorageKey('sched_' + dayId));
+	      if (raw) {
+	        const saved = JSON.parse(raw);
+	        if (Array.isArray(saved)) return saved;
+	      }
+	    } catch(e) {}
+	    if (!isKyotoTrip()) return [];
+	    return cloneScheduleItems(DAY_DEFAULTS[dayId] || []);
+	  }
+
+	  function saveLocalSchedule(dayId, items) {
+	    try { localStorage.setItem(getTripStorageKey('sched_' + dayId), JSON.stringify(items)); } catch(e) {}
+	  }
+
+	  function canUseRemoteItinerary() {
+	    return !!(getSupabaseClient() && currentUser && activeTripId);
+	  }
+
+	  function getItineraryStorageModeLabel() {
+	    return canUseRemoteItinerary() ? '儲存到 Supabase' : '本機暫存';
+	  }
+
+	  function getItineraryStorageModeClass() {
+	    return canUseRemoteItinerary() ? 'remote' : 'local';
+	  }
+
+	  function emptyItineraryCache() {
+	    return { daysByKey: {}, dayKeyById: {}, itemsByDayKey: {} };
+	  }
+
+	  function itineraryDayFromRow(row) {
+	    const dayNumber = Number(row.day_number) || 1;
+	    return {
+	      id: row.id,
+	      key: `day${dayNumber}`,
+	      dayNumber,
+	      date: row.date || '',
+	      title: row.title || ''
+	    };
+	  }
+
+	  function itineraryItemFromRow(row) {
+	    const metadata = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+	    return {
+	      id: row.id,
+	      sourceId: metadata.sourceId || '',
+	      isKyotoDefault: metadata.isKyotoDefault === true,
+	      time: normalizeScheduleTime(row.time),
+	      title: row.title || '',
+	      desc: row.description || '',
+	      tags: Array.isArray(row.tags) ? row.tags : [],
+	      mapQ: row.map_query || '',
+	      lat: row.lat === null || row.lat === undefined ? null : Number(row.lat),
+	      lng: row.lng === null || row.lng === undefined ? null : Number(row.lng),
+	      extra: metadata.extra || ''
+	    };
+	  }
+
+	  function getTripDateForDay(dayId) {
+	    const dates = getTripDayDates();
+	    const date = dates[getDayNumber(dayId) - 1];
+	    return date ? dateToYmd(date) : null;
+	  }
+
+	  async function loadRemoteItinerary() {
+	    const client = getSupabaseClient();
+	    const tripId = activeTripId;
+	    if (!client || !currentUser || !tripId) return null;
+	    if (itineraryCacheByTrip[tripId]) return itineraryCacheByTrip[tripId];
+	    if (itineraryLoadPromisesByTrip[tripId]) return itineraryLoadPromisesByTrip[tripId];
+
+	    itineraryLoadPromisesByTrip[tripId] = (async () => {
+	      const cache = emptyItineraryCache();
+	      const daySelect = 'id, group_id, trip_id, day_number, date, title, created_at, updated_at';
+	      const itemSelect = 'id, group_id, trip_id, day_id, day_key, time, title, description, tags, map_query, lat, lng, metadata, sort_order, created_at, updated_at';
+
+	      const { data: days, error: daysError } = await client
+	        .from('itinerary_days')
+	        .select(daySelect)
+	        .eq('group_id', TRAVEL_GROUP_ID)
+	        .eq('trip_id', tripId)
+	        .order('day_number', { ascending: true });
+
+	      if (daysError) {
+	        console.warn('Supabase itinerary days load failed:', daysError);
+	        return null;
+	      }
+
+	      (days || []).forEach(row => {
+	        const day = itineraryDayFromRow(row);
+	        cache.daysByKey[day.key] = day;
+	        cache.dayKeyById[day.id] = day.key;
+	        cache.itemsByDayKey[day.key] = [];
+	      });
+
+	      const dayIds = Object.values(cache.daysByKey).map(day => day.id).filter(Boolean);
+	      if (dayIds.length) {
+	        const { data: items, error: itemsError } = await client
+	          .from('itinerary_items')
+	          .select(itemSelect)
+	          .eq('group_id', TRAVEL_GROUP_ID)
+	          .eq('trip_id', tripId)
+	          .in('day_id', dayIds)
+	          .order('sort_order', { ascending: true })
+	          .order('time', { ascending: true });
+
+	        if (itemsError) {
+	          console.warn('Supabase itinerary items load failed:', itemsError);
+	          return null;
+	        }
+
+	        (items || []).forEach(row => {
+	          const dayKey = row.day_key || cache.dayKeyById[row.day_id];
+	          if (!dayKey) return;
+	          if (!cache.itemsByDayKey[dayKey]) cache.itemsByDayKey[dayKey] = [];
+	          cache.itemsByDayKey[dayKey].push(itineraryItemFromRow(row));
+	        });
+	      }
+
+	      Object.keys(cache.itemsByDayKey).forEach(dayKey => {
+	        cache.itemsByDayKey[dayKey] = sortScheduleItems(cache.itemsByDayKey[dayKey]);
+	      });
+
+	      itineraryCacheByTrip[tripId] = cache;
+	      return cache;
+	    })().finally(() => {
+	      delete itineraryLoadPromisesByTrip[tripId];
+	    });
+
+	    return itineraryLoadPromisesByTrip[tripId];
+	  }
+
+	  async function ensureRemoteDay(dayId, cache) {
+	    const client = getSupabaseClient();
+	    if (!client || !currentUser || !activeTripId || !cache) return null;
+	    if (cache.daysByKey[dayId]) return cache.daysByKey[dayId];
+
+	    const dayNumber = getDayNumber(dayId);
+	    const daySelect = 'id, group_id, trip_id, day_number, date, title, created_at, updated_at';
+	    const { data: existingRows, error: findError } = await client
+	      .from('itinerary_days')
+	      .select(daySelect)
+	      .eq('group_id', TRAVEL_GROUP_ID)
+	      .eq('trip_id', activeTripId)
+	      .eq('day_number', dayNumber)
+	      .limit(1);
+
+	    if (findError) {
+	      console.warn('Supabase itinerary day lookup failed:', findError);
+	      return null;
+	    }
+
+	    let row = (existingRows || [])[0];
+	    if (!row) {
+	      const { data, error } = await client
+	        .from('itinerary_days')
+	        .insert({
+	          group_id: TRAVEL_GROUP_ID,
+	          trip_id: activeTripId,
+	          day_number: dayNumber,
+	          date: getTripDateForDay(dayId),
+	          title: `第 ${dayNumber} 天`
+	        })
+	        .select(daySelect)
+	        .single();
+
+	      if (error) {
+	        console.warn('Supabase itinerary day insert failed:', error);
+	        return null;
+	      }
+	      row = data;
+	    }
+
+	    const day = itineraryDayFromRow(row);
+	    cache.daysByKey[day.key] = day;
+	    cache.dayKeyById[day.id] = day.key;
+	    if (!Object.prototype.hasOwnProperty.call(cache.itemsByDayKey, day.key)) {
+	      cache.itemsByDayKey[day.key] = [];
+	    }
+	    return day;
+	  }
+
+	  function itemToItineraryRow(item, day, index) {
+	    const metadata = {};
+	    const sourceId = item.sourceId || (String(item.id || '').startsWith('d') ? String(item.id) : '');
+	    if (sourceId) metadata.sourceId = sourceId;
+	    if (item.isKyotoDefault || (isKyotoTrip() && sourceId.startsWith('d'))) metadata.isKyotoDefault = true;
+	    if (item.extra) metadata.extra = item.extra;
+	    if (item.isCustom) metadata.isCustom = true;
+
+	    return {
+	      group_id: TRAVEL_GROUP_ID,
+	      trip_id: activeTripId,
+	      day_id: day.id,
+	      day_key: day.key,
+	      time: item.time || null,
+	      title: item.title || '',
+	      description: item.desc || '',
+	      tags: Array.isArray(item.tags) ? item.tags : [],
+	      map_query: item.mapQ || null,
+	      lat: Number.isFinite(Number(item.lat)) ? Number(item.lat) : null,
+	      lng: Number.isFinite(Number(item.lng)) ? Number(item.lng) : null,
+	      metadata,
+	      sort_order: index + 1
+	    };
+	  }
+
+	  async function saveRemoteSchedule(dayId, items) {
+	    const client = getSupabaseClient();
+	    const tripId = activeTripId;
+	    if (!client || !currentUser || !tripId) return false;
+
+	    const cache = await loadRemoteItinerary();
+	    if (!cache) return false;
+	    const day = await ensureRemoteDay(dayId, cache);
+	    if (!day) return false;
+
+	    const previousIds = (cache.itemsByDayKey[dayId] || []).map(item => item.id).filter(Boolean);
+	    const rows = sortScheduleItems(items).map((item, index) => itemToItineraryRow(item, day, index));
+	    const itemSelect = 'id, group_id, trip_id, day_id, day_key, time, title, description, tags, map_query, lat, lng, metadata, sort_order, created_at, updated_at';
+	    let savedItems = [];
+
+	    if (rows.length) {
+	      const { data, error } = await client
+	        .from('itinerary_items')
+	        .insert(rows)
+	        .select(itemSelect);
+
+	      if (error) {
+	        console.warn('Supabase itinerary items insert failed:', error);
+	        return false;
+	      }
+	      savedItems = sortScheduleItems((data || []).map(itineraryItemFromRow));
+	    }
+
+	    if (previousIds.length) {
+	      const { error } = await client
+	        .from('itinerary_items')
+	        .delete()
+	        .eq('group_id', TRAVEL_GROUP_ID)
+	        .eq('trip_id', tripId)
+	        .in('id', previousIds);
+
+	      if (error) {
+	        console.warn('Supabase itinerary items cleanup failed:', error);
+	        return false;
+	      }
+	    }
+
+	    cache.itemsByDayKey[dayId] = savedItems;
+	    return true;
+	  }
+
+	  async function getSchedule(dayId) {
+	    if (canUseRemoteItinerary()) {
+	      const cache = await loadRemoteItinerary();
+	      if (cache && Object.prototype.hasOwnProperty.call(cache.itemsByDayKey, dayId)) {
+	        return cloneScheduleItems(cache.itemsByDayKey[dayId]);
+	      }
+	    }
+	    return getLocalSchedule(dayId);
+	  }
+
+	  async function saveSchedule(dayId, items) {
+	    if (canUseRemoteItinerary()) {
+	      const saved = await saveRemoteSchedule(dayId, items);
+	      if (saved) return true;
+	      alert('行程儲存失敗，已保留目前畫面，請稍後再試');
+	      return false;
+	    }
+	    saveLocalSchedule(dayId, items);
+	    return true;
+	  }
+
+	  function clearLeafletMaps() {
+	    Object.keys(LMAPS).forEach(dayId => {
+	      try { LMAPS[dayId].remove(); } catch(e) {}
+	      delete LMAPS[dayId];
+	    });
+	  }
+
+	  function getDayMeta(dayId, index, date, trip) {
+	    if (isKyotoTrip(trip) && KYOTO_DAY_META[dayId]) return KYOTO_DAY_META[dayId];
+	    const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+	    return {
+	      overline: `🗓 Day ${index + 1} · ${weekday}`,
+	      title: `${escapeHtml(trip.flag || '🗺')} 第 ${index + 1} 天 — <em>${escapeHtml(trip.city || '旅程')}</em>`,
+	      desc: '尚未新增行程，可從下方加入時間與行程名稱。',
+	      mapHeader: '📍 今日路線 — 尚未新增地點'
+	    };
+	  }
+
+	  function renderItinerary() {
+	    const page = document.getElementById('page-itinerary');
+	    const tabs = page ? page.querySelector('.day-tabs') : null;
+	    const trip = getActiveTrip();
+	    if (!page || !tabs || !trip) return;
+	    const seq = ++itineraryRenderSeq;
+
+	    clearLeafletMaps();
+	    page.querySelectorAll('.day-content').forEach(el => el.remove());
+
+	    const dates = getTripDayDates(trip);
+	    if (!dates.length) {
+	      tabs.innerHTML = '';
+	      tabs.insertAdjacentHTML('afterend', '<div class="trip-loading">這趟旅程還沒有有效日期。</div>');
+	      return;
+	    }
+
+	    tabs.innerHTML = dates.map((dt, i) => {
+	      const dayId = `day${i + 1}`;
+	      return `<button class="day-tab ${i === 0 ? 'active' : ''}" onclick="switchDay('${dayId}',this)">${formatTripDateShort(dateToYmd(dt))}<span class="tab-dow">${dt.toLocaleDateString('en-US', { weekday: 'short' })}</span></button>`;
+	    }).join('');
+
+	    const contents = dates.map((dt, i) => {
+	      const dayId = `day${i + 1}`;
+	      const meta = getDayMeta(dayId, i, dt, trip);
+	      return `
+	        <div class="day-content ${i === 0 ? 'active' : ''}" id="${dayId}">
+	          <div class="day-header">
+	            <div class="overline"><span class="gold-line"></span>${meta.overline}</div>
+	            <div class="day-title">${meta.title}</div>
+	            <div class="day-desc">${escapeHtml(meta.desc)}</div>
+	          </div>
+	          <div class="day-map-section">
+	            <div class="day-map-header">${escapeHtml(meta.mapHeader)}</div>
+	            <div id="map-${dayId}" class="day-map-container"></div>
+	            <a id="gmaps-${dayId}" href="#" target="_blank" class="day-map-route-btn">🗺 在 Google Maps 查看完整路線</a>
+	          </div>
+	          <div class="timeline" id="timeline-${dayId}"></div>
+	          <div class="tl-add-wrap">
+	            <button class="tl-add-btn" onclick="toggleAddForm('${dayId}')">＋ 新增行程</button>
+	            <div class="tl-add-form" id="add-form-${dayId}" style="display:none">
+	              <div class="tl-storage-mode ${getItineraryStorageModeClass()}">${getItineraryStorageModeLabel()}</div>
+	              <div class="tl-add-form-row">
+	                <input class="tl-add-time" type="time" id="add-time-${dayId}" placeholder="時間" onblur="normalizeTimeField(this)">
+	                <input class="tl-add-name" type="text" id="add-name-${dayId}" placeholder="行程名稱...">
+	              </div>
+	              <div style="display:flex;gap:8px;">
+	                <button class="tl-add-confirm" onclick="confirmAddItem('${dayId}')">確認新增</button>
+	                <button class="tl-add-cancel" onclick="toggleAddForm('${dayId}')">取消</button>
+	              </div>
+	            </div>
+	          </div>
+	        </div>`;
+	    }).join('');
+
+	    tabs.insertAdjacentHTML('afterend', contents);
+	    dates.forEach((_, i) => renderTimeline(`day${i + 1}`, seq));
+	  }
+
+	  function tagHtml(tags) {
+	    return (tags||[]).map(t => {
+	      const cls = t.c ? ' ' + String(t.c).replace(/[^a-zA-Z0-9_-]/g, '') : '';
+	      return `<span class="tl-tag${cls}">${escapeHtml(t.l)}</span>`;
+	    }).join('');
+	  }
+
+	  async function renderTimeline(dayId, seq = itineraryRenderSeq) {
+	    const tl = document.getElementById('timeline-' + dayId);
+	    if (!tl) return;
+	    const renderTripId = activeTripId;
+	    if (canUseRemoteItinerary() && !itineraryCacheByTrip[activeTripId]) {
+	      tl.innerHTML = '<div class="trip-loading">載入行程中...</div>';
+	    }
+	    const items = sortScheduleItems(await getSchedule(dayId));
+	    if (seq !== itineraryRenderSeq || renderTripId !== activeTripId || document.getElementById('timeline-' + dayId) !== tl) return;
+	    tl.innerHTML = '';
+	    if (items.length === 0) {
+	      tl.innerHTML = '<div class="trip-loading">尚未新增行程，從下方開始安排這一天。</div>';
+	      renderMap(dayId, items);
+	      return;
+	    }
+	    items.forEach((item, idx) => {
+	      const itemId = String(item.id || '');
+	      const sourceId = String(item.sourceId || item.id || '');
+	      const isKyotoDefault = isKyotoTrip() && (item.isKyotoDefault || sourceId.startsWith('d'));
+	      const isCustom = !isKyotoDefault;
+	      const div = document.createElement('div');
+	      div.className = 'tl-item' + (isCustom ? ' custom-item' : '');
+	      div.dataset.id = item.id;
+	      const mapLink = item.mapQ
+	        ? `<a class="tl-map-link" href="https://maps.google.com/?q=${encodeURIComponent(item.mapQ)}" target="_blank">📍 查看地圖</a>`
+	        : '';
+	      const extra = isKyotoDefault && item.extra ? item.extra : '';
+	      const ticketBtn = isKyotoDefault && sourceId === 'd2_3'
+	        ? `<button class="tl-ticket-btn" onclick="openTicket()">🎫 查看快速通關券</button>`
+	        : '';
+	      const title = isKyotoDefault ? item.title : escapeHtml(item.title || '');
+	      const desc = isKyotoDefault ? (item.desc || '') : escapeHtml(item.desc || '');
+	      div.innerHTML = `
+	        <div class="tl-time-col">${escapeHtml(item.time || '—')}</div>
+	        <div class="tl-body">
+	          <div class="tl-title">${title}</div>
+	          <div class="tl-desc">${desc}</div>
+	          ${item.tags&&item.tags.length ? `<div class="tl-tags">${tagHtml(item.tags)}</div>` : ''}
+	          ${extra}
+	          ${ticketBtn}
+	          ${mapLink}
+	          <button class="tl-del-btn" onclick="deleteItem('${dayId}','${escapeJsArg(itemId)}')">✕ 刪除</button>
+	        </div>`;
+	      tl.appendChild(div);
+	    });
     renderMap(dayId, items);
   }
 
-  function renderMap(dayId, items) {
-    const stops = (items||getSchedule(dayId)).filter(it => it.lat && it.lng);
-    const container = document.getElementById('map-' + dayId);
-    if (!container) return;
+	  function renderMap(dayId, items) {
+	    const stops = (items || []).filter(it => it.lat && it.lng);
+	    const container = document.getElementById('map-' + dayId);
+	    if (!container) return;
+	    const gmLink = document.getElementById('gmaps-' + dayId);
 
-    // If map not yet initialized, create it
-    if (!LMAPS[dayId]) {
-      if (typeof L === 'undefined') return;
+	    if (!stops.length) {
+	      if (LMAPS[dayId]) {
+	        try { LMAPS[dayId].remove(); } catch(e) {}
+	        delete LMAPS[dayId];
+	      }
+	      container.innerHTML = '<div class="day-map-empty">尚未有地點座標</div>';
+	      if (gmLink) gmLink.style.display = 'none';
+	      return;
+	    }
+	    if (gmLink) gmLink.style.display = '';
+
+	    // If map not yet initialized, create it
+	    if (!LMAPS[dayId]) {
+	      if (typeof L === 'undefined') return;
       const center = stops.length
         ? [stops.reduce((s,i)=>s+i.lat,0)/stops.length, stops.reduce((s,i)=>s+i.lng,0)/stops.length]
         : [35.0116, 135.7681];
@@ -976,9 +1973,7 @@
     // Clear existing layers except tile layer
     map.eachLayer(layer => { if (layer instanceof L.Marker || layer instanceof L.Polyline) map.removeLayer(layer); });
 
-    if (!stops.length) return;
-
-    // Numbered markers
+	    // Numbered markers
     stops.forEach((stop, i) => {
       const icon = L.divIcon({
         className: '',
@@ -1000,12 +1995,16 @@
     }
 
     // Update Google Maps link
-    const gmLink = document.getElementById('gmaps-' + dayId);
-    if (gmLink && stops.length) {
-      const waypoints = stops.map(s => s.mapQ||`${s.lat},${s.lng}`).join('/');
-      gmLink.href = `https://www.google.com/maps/dir/${waypoints}`;
-    }
-  }
+	    if (gmLink && stops.length) {
+	      const waypoints = stops.map(s => s.mapQ||`${s.lat},${s.lng}`).join('/');
+	      gmLink.href = `https://www.google.com/maps/dir/${waypoints}`;
+	    }
+	  }
+
+	  function refreshDayMap(dayId) {
+	    if (LMAPS[dayId]) LMAPS[dayId].invalidateSize();
+	    else renderTimeline(dayId);
+	  }
 
   function toggleAddForm(dayId) {
     const form = document.getElementById('add-form-' + dayId);
@@ -1015,37 +2014,38 @@
     if (!showing) document.getElementById('add-name-' + dayId).focus();
   }
 
-  function confirmAddItem(dayId) {
-    const time = (document.getElementById('add-time-' + dayId).value || '').trim();
-    const name = (document.getElementById('add-name-' + dayId).value || '').trim();
-    if (!name) { document.getElementById('add-name-' + dayId).focus(); return; }
-    const items = getSchedule(dayId);
+  async function confirmAddItem(dayId) {
+    const timeInput = document.getElementById('add-time-' + dayId);
+    const nameInput = document.getElementById('add-name-' + dayId);
+    const time = normalizeTimeField(timeInput);
+    const name = (nameInput.value || '').trim();
+    if (!name) { nameInput.focus(); return; }
+    if (!canUseRemoteItinerary()) {
+      alert('目前未登入 Supabase，這筆行程只會存在本機暫存，不會寫入 itinerary_days / itinerary_items。請先到「旅程」登入後再新增共享行程。');
+    }
+    const items = await getSchedule(dayId);
     items.push({ id: 'c_' + Date.now(), time, title: name, desc: '', tags: [{l:'自訂'}], isCustom: true });
-    saveSchedule(dayId, items);
-    document.getElementById('add-time-' + dayId).value = '';
-    document.getElementById('add-name-' + dayId).value = '';
+    const saved = await saveSchedule(dayId, items);
+    if (!saved) return;
+    timeInput.value = '';
+    nameInput.value = '';
     toggleAddForm(dayId);
     renderTimeline(dayId);
   }
 
-  function deleteItem(dayId, id) {
-    const items = getSchedule(dayId).filter(i => i.id !== id);
-    saveSchedule(dayId, items);
+  async function deleteItem(dayId, id) {
+    const items = (await getSchedule(dayId)).filter(i => String(i.id) !== String(id));
+    const saved = await saveSchedule(dayId, items);
+    if (!saved) return;
     renderTimeline(dayId);
   }
 
-  // Initialize all timelines; maps init lazily when day is shown
-  ['day1','day2','day3','day4','day5'].forEach(renderTimeline);
-
-  // Re-invalidate map size when switching days
-  const _origSwitchDay = window.switchDay;
-  window.switchDay = function(dayId, btn) {
-    if (_origSwitchDay) _origSwitchDay(dayId, btn);
-    setTimeout(() => {
-      if (LMAPS[dayId]) LMAPS[dayId].invalidateSize();
-      else renderMap(dayId);
-    }, 50);
-  };
+	  // Re-invalidate map size when switching days
+	  const _origSwitchDay = window.switchDay;
+	  window.switchDay = function(dayId, btn) {
+	    if (_origSwitchDay) _origSwitchDay(dayId, btn);
+	    setTimeout(() => refreshDayMap(dayId), 50);
+	  };
 
 
   /* ─── Expense Tracker ─── */
@@ -1059,37 +2059,243 @@
     btn.classList.add(name === 'Vik' ? 'sel-vik' : 'sel-mike');
   }
 
-  function getExpenses() {
-    try { return JSON.parse(localStorage.getItem('kyoto_expenses') || '[]'); } catch(e) { return []; }
-  }
-  function saveExpenses(arr) {
-    try { localStorage.setItem('kyoto_expenses', JSON.stringify(arr)); } catch(e) {}
+  function resetPayerSelection() {
+    selectedPayer = 'Vik';
+    document.querySelectorAll('.exp-payer-btn').forEach(btn => {
+      btn.classList.remove('sel-vik', 'sel-mike');
+      if (btn.textContent.includes('Vik')) btn.classList.add('sel-vik');
+    });
   }
 
-  function addExpense() {
-    const purpose  = document.getElementById('exp-purpose').value.trim();
-    const currency = document.getElementById('exp-currency').value;
-    const amount   = parseFloat(document.getElementById('exp-amount').value);
-    if (!purpose) { document.getElementById('exp-purpose').focus(); return; }
-    if (!amount || amount <= 0) { document.getElementById('exp-amount').focus(); return; }
-    const arr = getExpenses();
-    arr.push({ id: Date.now(), purpose, currency, amount, paidBy: selectedPayer });
-    saveExpenses(arr);
-    document.getElementById('exp-purpose').value = '';
-    document.getElementById('exp-amount').value = '';
+	  function canUseRemoteChecklist() {
+	    return !!(getSupabaseClient() && currentUser && activeTripId);
+	  }
+
+	  function checklistFromRow(row, index = 0) {
+	    return {
+	      id: row.id,
+	      label: row.label || `項目 ${index + 1}`,
+	      checked: row.checked === true,
+	      sortOrder: Number(row.sort_order) || index + 1
+	    };
+	  }
+
+	  function getLocalChecklistItems(blueprint = null) {
+	    const saved = getLocalChecklistState();
+	    return (blueprint || getChecklistBlueprintFromDom()).map((item, index) => ({
+	      ...item,
+	      checked: !!saved[index],
+	      sortOrder: index + 1
+	    }));
+	  }
+
+	  async function createRemoteChecklistItems(blueprint, state, tripId) {
+	    const client = getSupabaseClient();
+	    if (!client || !currentUser || !tripId || !blueprint.length) return [];
+
+	    const rows = blueprint.map((item, index) => ({
+	      group_id: TRAVEL_GROUP_ID,
+	      trip_id: tripId,
+	      label: item.label || `項目 ${index + 1}`,
+	      checked: !!state[index],
+	      sort_order: index + 1
+	    }));
+
+	    const { data, error } = await client
+	      .from('checklist_items')
+	      .insert(rows)
+	      .select('id, group_id, trip_id, label, checked, sort_order, created_at, updated_at');
+
+	    if (error) throw error;
+	    return (data || []).map(checklistFromRow);
+	  }
+
+	  async function getChecklistItems(seedBlueprint = null) {
+	    const client = getSupabaseClient();
+	    const tripId = activeTripId;
+	    const blueprint = seedBlueprint || getChecklistBlueprintFromDom();
+
+	    if (!client || !currentUser || !tripId) return getLocalChecklistItems(blueprint);
+	    if (Array.isArray(checklistCacheByTrip[tripId])) return checklistCacheByTrip[tripId];
+	    if (checklistLoadPromisesByTrip[tripId]) return checklistLoadPromisesByTrip[tripId];
+
+	    checklistLoadPromisesByTrip[tripId] = (async () => {
+	      const { data, error } = await client
+	        .from('checklist_items')
+	        .select('id, group_id, trip_id, label, checked, sort_order, created_at, updated_at')
+	        .eq('group_id', TRAVEL_GROUP_ID)
+	        .eq('trip_id', tripId)
+	        .order('sort_order', { ascending: true });
+
+	      if (error) {
+	        console.warn('Supabase checklist load failed:', error);
+	        return getLocalChecklistItems(blueprint);
+	      }
+
+	      let items = (data || []).map(checklistFromRow);
+	      if (items.length === 0 && blueprint.length > 0) {
+	        try {
+	          items = await createRemoteChecklistItems(blueprint, getLocalChecklistState(), tripId);
+	        } catch (insertError) {
+	          console.warn('Supabase checklist seed failed:', insertError);
+	          return getLocalChecklistItems(blueprint);
+	        }
+	      }
+
+	      checklistCacheByTrip[tripId] = items;
+	      return items;
+	    })();
+
+	    try {
+	      return await checklistLoadPromisesByTrip[tripId];
+	    } finally {
+	      delete checklistLoadPromisesByTrip[tripId];
+	    }
+	  }
+
+	  function updateChecklistStorageMode() {
+	    const mode = document.getElementById('check-storage-mode');
+	    if (!mode) return;
+	    mode.textContent = getChecklistModeLabel();
+	    mode.classList.toggle('remote', canUseRemoteChecklist());
+	    mode.classList.toggle('local', !canUseRemoteChecklist());
+	  }
+
+	  async function renderChecklist() {
+	    const list = document.getElementById('checklist-list');
+	    updateChecklistStorageMode();
+	    if (!list) return;
+
+	    const seedBlueprint = getChecklistBlueprintFromDom();
+	    const seq = ++checklistRenderSeq;
+	    const renderTripId = activeTripId;
+	    const shouldShowLoading = canUseRemoteChecklist() && !checklistCacheByTrip[activeTripId];
+	    if (shouldShowLoading) list.innerHTML = '<div class="trip-loading">載入清單中...</div>';
+
+	    const items = await getChecklistItems(seedBlueprint);
+	    if (seq !== checklistRenderSeq || renderTripId !== activeTripId || document.getElementById('checklist-list') !== list) return;
+
+	    updateChecklistStorageMode();
+	    list.innerHTML = items.map((item, index) => checklistItemHtml(item, index)).join('');
+	  }
+
+	  function canUseRemoteExpenses() {
+	    return !!(getSupabaseClient() && currentUser && activeTripId);
+	  }
+
+	  function getLocalExpenses() {
+	    try { return JSON.parse(localStorage.getItem(getTripStorageKey('expenses')) || '[]'); } catch(e) { return []; }
+	  }
+
+	  function saveLocalExpenses(arr) {
+	    try { localStorage.setItem(getTripStorageKey('expenses'), JSON.stringify(arr)); } catch(e) {}
+	  }
+
+	  async function getExpenses() {
+	    const client = getSupabaseClient();
+	    if (!client || !currentUser || !activeTripId) return getLocalExpenses();
+	    if (expensesCacheByTrip[activeTripId]) return expensesCacheByTrip[activeTripId];
+
+	    const { data, error } = await client
+	      .from('expenses')
+	      .select('id, title, currency, amount, paid_by_name, created_at')
+	      .eq('group_id', TRAVEL_GROUP_ID)
+	      .eq('trip_id', activeTripId)
+	      .order('created_at', { ascending: true });
+
+	    if (error) {
+	      console.warn('Supabase expenses load failed:', error);
+	      return getLocalExpenses();
+	    }
+
+	    const expenses = (data || []).map(expenseFromRow);
+	    expensesCacheByTrip[activeTripId] = expenses;
+	    return expenses;
+	  }
+
+  async function addExpense() {
+    const purposeEl = document.getElementById('exp-purpose');
+    const currencyEl = document.getElementById('exp-currency');
+    const amountEl = document.getElementById('exp-amount');
+    if (!purposeEl || !currencyEl || !amountEl) return;
+
+    const purpose  = purposeEl.value.trim();
+    const currency = currencyEl.value;
+    const amount   = parseFloat(amountEl.value);
+    if (!purpose) { purposeEl.focus(); return; }
+    if (!amount || amount <= 0) { amountEl.focus(); return; }
+
+    const client = getSupabaseClient();
+    if (client && currentUser && activeTripId) {
+      const { data, error } = await client
+        .from('expenses')
+        .insert({
+          group_id: TRAVEL_GROUP_ID,
+          trip_id: activeTripId,
+          title: purpose,
+          currency,
+          amount,
+          paid_by_name: selectedPayer
+        })
+        .select('id, title, currency, amount, paid_by_name, created_at')
+        .single();
+
+      if (error) {
+        alert('花費儲存失敗，請稍後再試');
+        console.warn('Supabase expense insert failed:', error);
+        return;
+      }
+
+      if (expensesCacheByTrip[activeTripId]) {
+        expensesCacheByTrip[activeTripId].push(expenseFromRow(data));
+      }
+    } else {
+      const arr = getLocalExpenses();
+      arr.push({ id: Date.now(), purpose, currency, amount, paidBy: selectedPayer });
+      saveLocalExpenses(arr);
+    }
+
+    purposeEl.value = '';
+    amountEl.value = '';
     renderExpenses();
   }
 
-  function deleteExpense(id) {
-    saveExpenses(getExpenses().filter(e => e.id !== id));
-    renderExpenses();
-  }
+	  async function deleteExpense(id) {
+	    const client = getSupabaseClient();
+	    if (client && currentUser && activeTripId) {
+	      const { error } = await client
+	        .from('expenses')
+	        .delete()
+	        .eq('id', id)
+	        .eq('group_id', TRAVEL_GROUP_ID)
+	        .eq('trip_id', activeTripId);
 
-  function renderExpenses() {
-    const arr = getExpenses();
-    const list = document.getElementById('expense-list');
-    const sumEl = document.getElementById('expense-summary');
-    list.innerHTML = '';
+	      if (error) {
+	        alert('花費刪除失敗，請稍後再試');
+	        console.warn('Supabase expense delete failed:', error);
+	        return;
+	      }
+
+	      if (expensesCacheByTrip[activeTripId]) {
+	        expensesCacheByTrip[activeTripId] = expensesCacheByTrip[activeTripId].filter(e => String(e.id) !== String(id));
+	      }
+	    } else {
+	      saveLocalExpenses(getLocalExpenses().filter(e => String(e.id) !== String(id)));
+	    }
+	    renderExpenses();
+	  }
+
+	  async function renderExpenses() {
+	    const list = document.getElementById('expense-list');
+	    const sumEl = document.getElementById('expense-summary');
+	    if (!list || !sumEl) return;
+	    const seq = ++expenseRenderSeq;
+	    const renderTripId = activeTripId;
+	    const shouldShowLoading = canUseRemoteExpenses() && !expensesCacheByTrip[activeTripId];
+	    if (shouldShowLoading) list.innerHTML = '<div class="trip-loading">載入花費中...</div>';
+	    const arr = await getExpenses();
+	    if (seq !== expenseRenderSeq || renderTripId !== activeTripId || document.getElementById('expense-list') !== list) return;
+	    list.innerHTML = '';
 
     if (arr.length === 0) { sumEl.style.display = 'none'; return; }
 
@@ -1101,18 +2307,18 @@
       const fmt = e.currency === 'JPY'
         ? Math.round(e.amount).toLocaleString()
         : e.amount.toLocaleString('en', {minimumFractionDigits:0, maximumFractionDigits:0});
-      div.innerHTML = `
-        <div class="expense-item-row">
-          <span class="exp-tag ${cls}">${e.paidBy === 'Vik' ? '👩 Vik' : '👨 Mike'}</span>
-          <span class="exp-purpose">${e.purpose}</span>
-          <span class="exp-amount-val" style="font-size:13px;">${sym}${fmt}</span>
-          <span class="exp-chevron">▾</span>
-        </div>
-        <div class="expense-item-detail">
-          <span style="font-size:11px;color:var(--muted-fg);">幣別：${e.currency}</span>
-          <span style="flex:1;"></span>
-          <button class="exp-del" onclick="event.stopPropagation();deleteExpense(${e.id})">✕ 刪除</button>
-        </div>`;
+	      div.innerHTML = `
+	        <div class="expense-item-row">
+	          <span class="exp-tag ${cls}">${e.paidBy === 'Vik' ? '👩 Vik' : '👨 Mike'}</span>
+	          <span class="exp-purpose">${escapeHtml(e.purpose)}</span>
+	          <span class="exp-amount-val" style="font-size:13px;">${sym}${fmt}</span>
+	          <span class="exp-chevron">▾</span>
+	        </div>
+	        <div class="expense-item-detail">
+	          <span style="font-size:11px;color:var(--muted-fg);">幣別：${escapeHtml(e.currency)}</span>
+	          <span style="flex:1;"></span>
+	          <button class="exp-del" onclick="event.stopPropagation();deleteExpense('${escapeJsArg(String(e.id))}')">✕ 刪除</button>
+	        </div>`;
       div.addEventListener('click', () => div.classList.toggle('expanded'));
       list.appendChild(div);
     });
@@ -1140,8 +2346,6 @@
     sumEl.style.display = 'block';
   }
 
-  renderExpenses();
-
   // ── Ticket lightbox ──
   function openTicket() {
     document.getElementById('ticket-overlay').classList.add('open');
@@ -1150,3 +2354,7 @@
     document.getElementById('ticket-overlay').classList.remove('open');
     _lbResetZoom('ticket-overlay');
   }
+
+  renderActiveTripUI(getLocalTrips());
+  initSupabaseAuth();
+  renderTrips();

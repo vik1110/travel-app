@@ -115,6 +115,7 @@ Supabase Schema 進度
 3. 使用者從 recovery email 回來後，偵測 PASSWORD_RECOVERY event。
 4. 顯示「新密碼 / 再次輸入新密碼」表單。
 5. 呼叫 supabase.auth.updateUser({ password }) 更新密碼。
+6. redirectTo 維持原頁 URL，避免 Supabase Auth URL allowlist 因 query string 擋信；頁面載入時會先記住 recovery URL/hash，並用 sessionStorage fallback，避免 recovery link 只變自動登入卻沒顯示改密碼表單。
 
 已完成輕量拆分：
 
@@ -123,6 +124,53 @@ Supabase Schema 進度
 3. 原本底部 inline script 已拆到 app.js。
 4. 原本 inline base64 USJ 票券圖已拆到 assets/usj-express-pass.png。
 5. 為保留現有 onclick/oninput handler，相容性上仍使用一般 <script src="app.js"></script>，未改成 type="module"。
+
+已完成第二階段 active trip：
+
+1. 點選旅程卡片後會設定 activeTripId，並儲存在 localStorage: travel_active_trip_id。
+2. 旅程列表會標示「目前旅程」。
+3. 首頁 hero、倒數、天氣卡、每日主題會根據 active trip 更新。
+4. 京都旅程保留原本完整資料；非京都旅程會顯示泛用摘要、日期 tabs、空白可編輯行程。
+5. 行程頁 tabs/content 改為依旅程日期動態產生，不再只支援固定五天 DOM。
+6. schedule/checks/expenses 的本機 localStorage key 改為依 active trip 分開。
+7. active trip 切換時會重新 render 首頁、行程、資訊、花費。
+
+已完成第三階段 expenses Supabase 接入：
+
+1. 登入後花費會讀寫 public.expenses。
+2. 未登入或 Supabase 花費讀取失敗時，仍保留 active trip localStorage fallback。
+3. 遠端 expenses 只存在記憶體 cache，不寫回 localStorage。
+4. 新增花費 insert mapping：
+   - purpose -> title
+   - currency -> currency
+   - amount -> amount
+   - paidBy -> paid_by_name
+   - activeTripId -> trip_id
+   - TRAVEL_GROUP_ID -> group_id
+5. 刪除花費會用 id + group_id + trip_id 刪除 Supabase row。
+
+已完成第四階段 itinerary Supabase 接入：
+
+1. 登入後每日行程會讀 public.itinerary_days / public.itinerary_items。
+2. 未登入、Supabase 行程讀取失敗，或該天尚未有遠端資料時，仍保留 active trip localStorage / DAY_DEFAULTS fallback。
+3. 遠端 itinerary 只存在記憶體 cache，不寫回 localStorage，避免登出後殘留共享資料。
+4. 新增/刪除行程會寫入 Supabase：
+   - day1/day2... -> itinerary_days.day_number + itinerary_items.day_key
+   - item.time -> itinerary_items.time
+   - item.title -> itinerary_items.title
+   - item.desc -> itinerary_items.description
+   - item.tags -> itinerary_items.tags
+   - item.mapQ -> itinerary_items.map_query
+   - item.lat/lng -> itinerary_items.lat/lng
+   - item.extra -> itinerary_items.metadata.extra
+   - 京都預設 item id -> itinerary_items.metadata.sourceId / isKyotoDefault
+   - activeTripId -> trip_id
+   - TRAVEL_GROUP_ID -> group_id
+5. 第一次編輯尚未有遠端資料的日期時，會建立 itinerary_days，並把該天目前畫面上的行程快照寫入 itinerary_items。
+6. 行程新增表單的時間欄位保留原生 type="time"，但欄位寬度/高度已放大，避免 Safari/iOS 顯示「上午/下午 + 時分」時被截斷。
+7. 行程新增表單會顯示目前儲存位置：
+   - 儲存到 Supabase：已登入且可使用遠端寫入
+   - 本機暫存：未登入或 Supabase 尚不可用，資料只會留在 localStorage
 
 
 Supabase 後台還需要確認
@@ -171,20 +219,28 @@ curl -I http://127.0.0.1:5550/assets/usj-express-pass.png
 - app 可正常開啟
 - Supabase 登入成功
 - 登入後可看到京都旅程
+- 第二階段手動測試：旅程切換正常；非京都旅程暫無資料屬預期
+- 後續 Supabase 手動測試已完成，回報沒問題
 
 
-建議接續測試
+下一輪建議測試
 ------------
-1. 在旅程 tab 登入。
-2. 新增一筆測試旅程，例如：
-   - 城市：首爾
-   - 國家：韓國
-   - 國旗應自動變 🇰🇷
-3. 到 Supabase Table Editor -> trips 確認新增成功。
-4. 重新整理頁面，確認旅程仍存在。
-5. 用對方帳號登入，確認看得到同一筆旅程。
-6. 刪除測試旅程，確認 Supabase trips 同步刪除。
-7. 測試「忘記密碼」流程：
+1. 測試 checklist：
+   - 登入後選京都旅程。
+   - 在資訊 tab 勾選一筆準備清單。
+   - 到 Supabase Table Editor -> checklist_items 確認 label/checked/sort_order/trip_id/group_id。
+   - 重新整理頁面，確認勾選狀態仍存在。
+   - 用另一帳號登入同 group，確認看得到同一筆勾選狀態。
+   - 取消勾選，確認 Supabase checklist_items.checked 同步更新。
+2. 回歸測試 itinerary：
+   - 登入後選京都旅程。
+   - 在行程 tab 的任一天新增一筆行程。
+   - 到 Supabase Table Editor -> itinerary_days / itinerary_items 確認 day_number/day_key/time/title/trip_id/group_id。
+   - 新增表單上方應顯示「儲存到 Supabase」；若顯示「本機暫存」，代表不會寫進資料庫。
+   - 重新整理頁面，確認行程仍存在。
+   - 用另一帳號登入同 group，確認看得到同一筆行程。
+   - 刪除該筆行程，確認 Supabase itinerary_items 同步刪除。
+3. 測試「忘記密碼」流程：
    - 在 Email 欄輸入對方 email
    - 點忘記密碼
    - 收信後點 recovery link
@@ -192,74 +248,29 @@ curl -I http://127.0.0.1:5550/assets/usj-express-pass.png
    - 登出後用新密碼登入
 
 
-目前還沒做
+目前已完成
 ----------
-第二階段：active trip
-
-目標：
-- 點選旅程卡片後設定 activeTripId。
-- 首頁、行程、資訊、花費等頁面都根據 activeTripId 顯示資料。
-
-目前前端仍是京都固定內容：
-
-- DAY_DEFAULTS 寫死 day1 到 day5
-- 倒數日期寫死 2026-05-28
-- 行程頁 DOM 寫死五天 tabs
-- 花費仍用 localStorage key: kyoto_expenses
-- checklist 仍用 localStorage key: kyoto_checks
-- schedule 仍用 localStorage key: kyoto_sched_day*
-
-第三階段：搬 expenses
-
-目前 localStorage:
-- kyoto_expenses
-
-對應 Supabase:
-- public.expenses
-
-欄位 mapping 建議：
-- purpose -> title
-- currency -> currency
-- amount -> amount
-- paidBy -> paid_by_name
-- activeTripId -> trip_id
-- TRAVEL_GROUP_ID -> group_id
-
-第四階段：搬 itinerary
-
-目前 localStorage / defaults:
-- DAY_DEFAULTS
-- kyoto_sched_day1 ... kyoto_sched_day5
-
-對應 Supabase:
-- public.itinerary_days
-- public.itinerary_items
-
-欄位 mapping 建議：
-- day1/day2... -> itinerary_days.day_number 或 itinerary_items.day_key
-- item.title -> itinerary_items.title
-- item.desc -> itinerary_items.description
-- item.tags -> itinerary_items.tags jsonb
-- item.mapQ -> itinerary_items.map_query
-- item.lat -> itinerary_items.lat
-- item.lng -> itinerary_items.lng
-- item.extra -> itinerary_items.metadata.extra
-
-注意：
-- 目前前端 day tabs 寫死 5 天。
-- 若未來不同旅程有 3 天、7 天、10 天，需要重構成動態 day tabs。
-
 第五階段：搬 checklist
 
-目前 localStorage:
-- kyoto_checks
+1. 資訊 tab 補回準備清單 UI。
+2. 登入後 checklist 會讀寫 public.checklist_items。
+3. 未登入、Supabase checklist 讀取失敗，或尚未有遠端資料時，保留 active trip localStorage fallback。
+4. 第一次登入且 checklist_items 尚無資料時，會從畫面上的 .check-item 抓 label，依本機勾選狀態建立一列一個 checklist item。
+5. 遠端 checklist 只存在記憶體 cache，不寫回 localStorage，避免登出後殘留共享資料。
 
-目前只存 boolean array，沒有儲存 label。
+本機 fallback key:
+- kyoto_checks
+- trip_<id>_checks
 
 對應 Supabase:
 - public.checklist_items
 
-搬遷時要從 DOM 的 .check-item 抓文字 label，變成一列一個 checklist item。
+欄位對應:
+- .check-item label -> checklist_items.label
+- checked state -> checklist_items.checked
+- display order -> checklist_items.sort_order
+- activeTripId -> trip_id
+- TRAVEL_GROUP_ID -> group_id
 
 
 已知風險 / 注意事項

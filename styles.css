@@ -530,9 +530,18 @@
       z-index: 1;
       position: relative;
     }
-    .day-map-container .leaflet-container {
-      border-radius: var(--radius-md);
-    }
+	    .day-map-container .leaflet-container {
+	      border-radius: var(--radius-md);
+	    }
+	    .day-map-empty {
+	      height: 100%;
+	      display: flex;
+	      align-items: center;
+	      justify-content: center;
+	      background: var(--muted-bg);
+	      color: var(--muted-fg);
+	      font-size: 12px;
+	    }
     /* Leaflet numbered markers */
     .map-pin {
       width: 26px; height: 26px;
@@ -574,14 +583,37 @@
       box-shadow: var(--shadow-sm);
       margin-top: 8px;
     }
+    .tl-storage-mode {
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .tl-storage-mode.remote {
+      background: rgba(194,220,128,0.35);
+      color: #4a6a20;
+    }
+    .tl-storage-mode.local {
+      background: #FEF3E9;
+      color: var(--interactive);
+    }
     .tl-add-form-row { display: flex; gap: 8px; margin-bottom: 10px; }
     .tl-add-time {
-      width: 88px; padding: 8px 8px;
+      width: 152px;
+      min-width: 152px;
+      min-height: 44px;
+      padding: 8px 10px;
       border: 1px solid var(--border); border-radius: var(--radius-sm);
-      font-family: var(--font-sans); font-size: 13px;
+      font-family: var(--font-sans); font-size: 15px;
+      text-align: center;
       background: var(--bg); color: var(--fg);
     }
     .tl-add-name {
+      min-width: 0;
       flex: 1; padding: 8px 12px;
       border: 1px solid var(--border); border-radius: var(--radius-sm);
       font-family: var(--font-sans); font-size: 13px;
@@ -1267,6 +1299,10 @@
     /* Checklist */
     .check-section { padding: 0 20px 20px; }
     .check-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
       font-size: 11px;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -1274,6 +1310,12 @@
       font-weight: 600;
       margin-bottom: 10px;
       padding-top: 4px;
+    }
+    .check-section-header .tl-storage-mode {
+      margin-bottom: 0;
+      text-transform: none;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
     }
     .check-item {
       display: flex;
@@ -1305,6 +1347,7 @@
       border-color: var(--interactive);
     }
     .check-tick { display: none; color: var(--white); font-size: 11px; }
+    .check-item > div:last-child { min-width: 0; }
     .check-text { font-size: 13px; font-weight: 500; flex: 1; }
     .check-sub { font-size: 11px; color: var(--muted-fg); margin-top: 1px; }
 
@@ -1723,16 +1766,20 @@
 	      text-align: center;
 	    }
 
-	    .trip-card {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      margin: 0 20px 14px;
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-      transition: all 0.3s ease;
-    }
-    .trip-card:active { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+		    .trip-card {
+	      background: var(--white);
+	      border: 1px solid var(--border);
+	      border-radius: var(--radius-lg);
+	      margin: 0 20px 14px;
+	      overflow: hidden;
+	      box-shadow: var(--shadow-sm);
+	      transition: all 0.3s ease;
+	    }
+	    .trip-card.active {
+	      border-color: var(--interactive);
+	      box-shadow: 0 0 0 2px rgba(213,105,137,0.16), var(--shadow-md);
+	    }
+	    .trip-card:active { transform: translateY(-1px); box-shadow: var(--shadow-md); }
     .trip-card-header {
       display: flex;
       align-items: center;
@@ -1760,17 +1807,22 @@
       color: var(--muted-fg);
       margin-bottom: 4px;
     }
-    .trip-status {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      padding: 2px 10px;
-      border-radius: var(--radius-pill);
-    }
+	    .trip-status {
+	      display: inline-block;
+	      font-size: 10px;
+	      font-weight: 600;
+	      letter-spacing: 0.08em;
+	      padding: 2px 10px;
+	      border-radius: var(--radius-pill);
+	      margin-right: 4px;
+	    }
     .trip-status.upcoming { background: #FAEDF2; color: var(--interactive); }
     .trip-status.completed { background: var(--muted-bg); color: var(--muted-fg); }
-    .trip-status.planning { background: #FEF3E9; color: var(--interactive); }
+	    .trip-status.planning { background: #FEF3E9; color: var(--interactive); }
+	    .trip-status.active {
+	      background: rgba(194,220,128,0.45);
+	      color: #4a6a20;
+	    }
     .trip-highlights {
       padding: 0 18px 14px;
       display: flex;
@@ -1825,7 +1877,7 @@
       color: var(--muted-fg);
     }
     .history-empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
-    .history-empty-text { font-size: 14px; line-height: 1.6; }
+	    .history-empty-text { font-size: 14px; line-height: 1.6; }
 
     /* Modal overlay */
     .modal-overlay {

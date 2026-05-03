@@ -278,7 +278,7 @@
   </div>
 
   <!-- 🏨 住宿 -->
-  <div style="margin:12px 20px 0; background:var(--muted-bg); border-radius:var(--radius-md); padding:16px; border:1px solid var(--border);">
+  <div class="home-hotel-card" style="margin:12px 20px 0; background:var(--muted-bg); border-radius:var(--radius-md); padding:16px; border:1px solid var(--border);">
     <div style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--primary); font-weight:600; margin-bottom:8px;">🏨 住宿</div>
     <div style="font-family:var(--font-serif); font-size:17px; font-weight:700; margin-bottom:4px; color:var(--fg);">御宿野乃 京都七条</div>
     <div style="font-size:12px; color:var(--muted-fg); line-height:1.6;">
@@ -368,7 +368,7 @@
       <button class="tl-add-btn" onclick="toggleAddForm('day1')">＋ 新增行程</button>
       <div class="tl-add-form" id="add-form-day1" style="display:none">
         <div class="tl-add-form-row">
-          <input class="tl-add-time" type="time" id="add-time-day1" placeholder="時間">
+          <input class="tl-add-time" type="time" id="add-time-day1" placeholder="時間" onblur="normalizeTimeField(this)">
           <input class="tl-add-name" type="text" id="add-name-day1" placeholder="行程名稱...">
         </div>
         <div style="display:flex;gap:8px;">
@@ -396,7 +396,7 @@
       <button class="tl-add-btn" onclick="toggleAddForm('day2')">＋ 新增行程</button>
       <div class="tl-add-form" id="add-form-day2" style="display:none">
         <div class="tl-add-form-row">
-          <input class="tl-add-time" type="time" id="add-time-day2" placeholder="時間">
+          <input class="tl-add-time" type="time" id="add-time-day2" placeholder="時間" onblur="normalizeTimeField(this)">
           <input class="tl-add-name" type="text" id="add-name-day2" placeholder="行程名稱...">
         </div>
         <div style="display:flex;gap:8px;">
@@ -424,7 +424,7 @@
       <button class="tl-add-btn" onclick="toggleAddForm('day3')">＋ 新增行程</button>
       <div class="tl-add-form" id="add-form-day3" style="display:none">
         <div class="tl-add-form-row">
-          <input class="tl-add-time" type="time" id="add-time-day3" placeholder="時間">
+          <input class="tl-add-time" type="time" id="add-time-day3" placeholder="時間" onblur="normalizeTimeField(this)">
           <input class="tl-add-name" type="text" id="add-name-day3" placeholder="行程名稱...">
         </div>
         <div style="display:flex;gap:8px;">
@@ -452,7 +452,7 @@
       <button class="tl-add-btn" onclick="toggleAddForm('day4')">＋ 新增行程</button>
       <div class="tl-add-form" id="add-form-day4" style="display:none">
         <div class="tl-add-form-row">
-          <input class="tl-add-time" type="time" id="add-time-day4" placeholder="時間">
+          <input class="tl-add-time" type="time" id="add-time-day4" placeholder="時間" onblur="normalizeTimeField(this)">
           <input class="tl-add-name" type="text" id="add-name-day4" placeholder="行程名稱...">
         </div>
         <div style="display:flex;gap:8px;">
@@ -480,7 +480,7 @@
       <button class="tl-add-btn" onclick="toggleAddForm('day5')">＋ 新增行程</button>
       <div class="tl-add-form" id="add-form-day5" style="display:none">
         <div class="tl-add-form-row">
-          <input class="tl-add-time" type="time" id="add-time-day5" placeholder="時間">
+          <input class="tl-add-time" type="time" id="add-time-day5" placeholder="時間" onblur="normalizeTimeField(this)">
           <input class="tl-add-name" type="text" id="add-name-day5" placeholder="行程名稱...">
         </div>
         <div style="display:flex;gap:8px;">
@@ -1195,6 +1195,52 @@
   <div class="tip-row"><div class="tip-icon-col">🏧</div><div class="tip-body"><strong>現金</strong>：7-11・全家 ATM 可領台灣卡，小店多數只收現金</div></div>
   <div class="tip-row"><div class="tip-icon-col">🛍</div><div class="tip-body"><strong>退稅</strong>：購物滿 ¥5,500 可退消費稅，需護照辦理</div></div>
   <div class="tip-row"><div class="tip-icon-col">⛩</div><div class="tip-body"><strong>寺廟禮儀</strong>：進殿脫鞋・確認是否可拍照・輕聲細語</div></div>
+
+  <!-- ✅ 準備清單 -->
+  <div class="info-sec-title">✅ 準備清單</div>
+  <div class="check-section">
+    <div class="check-section-header">
+      <span>Travel Checklist</span>
+      <span class="tl-storage-mode local" id="check-storage-mode">本機暫存</span>
+    </div>
+    <div id="checklist-list">
+      <div class="check-item" onclick="toggleCheck(this)" data-check-label="護照、機票、住宿確認">
+        <div class="check-box"><span class="check-tick">✓</span></div>
+        <div>
+          <div class="check-text">護照、機票、住宿確認</div>
+          <div class="check-sub">出發前確認可離線查看</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)" data-check-label="交通票券與 USJ 票券">
+        <div class="check-box"><span class="check-tick">✓</span></div>
+        <div>
+          <div class="check-text">交通票券與 USJ 票券</div>
+          <div class="check-sub">JR / ICOCA / Express Pass</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)" data-check-label="現金、信用卡、退稅資料">
+        <div class="check-box"><span class="check-tick">✓</span></div>
+        <div>
+          <div class="check-text">現金、信用卡、退稅資料</div>
+          <div class="check-sub">小店多數仍以現金為主</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)" data-check-label="網路 SIM / Wi-Fi">
+        <div class="check-box"><span class="check-tick">✓</span></div>
+        <div>
+          <div class="check-text">網路 SIM / Wi-Fi</div>
+          <div class="check-sub">抵達後可立即查路線</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)" data-check-label="雨具與舒適鞋">
+        <div class="check-box"><span class="check-tick">✓</span></div>
+        <div>
+          <div class="check-text">雨具與舒適鞋</div>
+          <div class="check-sub">5 月底可能遇到梅雨</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- 💰 花費紀錄 -->
   <div class="info-sec-title">💰 花費紀錄</div>
