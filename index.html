@@ -2173,7 +2173,7 @@
   </div>
 
   <!-- Day 1 -->
-  <div class="day-content" id="day1">
+  <div class="day-content active" id="day1">
     <div class="day-header">
       <div class="overline"><span class="gold-line"></span>✈️ Day One · Thursday</div>
       <div class="day-title">🛬 抵達日 — <em>Arrival</em></div>
@@ -3300,6 +3300,16 @@
     document.getElementById('nav-' + name).classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (name === 'history') renderTrips();
+    if (name === 'itinerary') {
+      setTimeout(function() {
+        const activeDay = document.querySelector('.day-content.active');
+        if (activeDay) {
+          const dayId = activeDay.id;
+          if (LMAPS[dayId]) LMAPS[dayId].invalidateSize();
+          else renderMap(dayId, getSchedule(dayId));
+        }
+      }, 80);
+    }
   }
   function switchDay(id, btn) {
     document.querySelectorAll('.day-content').forEach(d => d.classList.remove('active'));
@@ -3574,9 +3584,10 @@
     if (typeof L === 'undefined') return;
     const container = document.getElementById('map-' + dayId);
     if (!container) return;
+    if (container.offsetParent === null && !LMAPS[dayId]) return;
     if (LMAPS[dayId]) { LMAPS[dayId].invalidateSize(); return; }
 
-    const pts = (items || []).filter(i => i.lat && i.lng);
+    const pts = (items || getSchedule(dayId)).filter(i => i.lat && i.lng);
     if (pts.length === 0) return;
 
     const map = L.map(container, { zoomControl: true, scrollWheelZoom: false });
