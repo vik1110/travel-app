@@ -1110,8 +1110,17 @@
 	    });
 
 	    if (error) {
-	      alert('儲存失敗，請稍後再試');
-	      console.warn('Supabase trip insert failed:', error);
+	      const hint = error.code === '42501'
+	        ? '\n\n可能原因：此帳號沒有這個 travel group 的寫入權限，請確認 public.group_members / trips RLS policy。'
+	        : '';
+	      const message = error.message || error.details || '未知 Supabase 錯誤';
+	      alert(`儲存失敗：${message}${hint}`);
+	      console.warn('Supabase trip insert failed:', {
+	        error,
+	        groupId: TRAVEL_GROUP_ID,
+	        userId: currentUser && currentUser.id,
+	        payload: { city, country, flag, start_date: start, end_date: end, status, tags }
+	      });
 	      return;
 	    }
 
