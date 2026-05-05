@@ -24,8 +24,11 @@ http://127.0.0.1:5550/index.html
 4. 新增/刪除花費，確認 `expenses` 同步。
 5. 新增/刪除每日行程，確認 `itinerary_days` / `itinerary_items` 同步。
 6. 勾選/取消準備清單，確認 `checklist_items.checked` 同步。
+7. 新增/勾選/刪除購買清單，確認 `shopping_items` 同步。
 
 未登入或 Supabase 不可用時，旅程相關資料會使用 active trip 專屬 localStorage fallback。
+
+購買清單 Supabase 表尚未建立時，先執行 `supabase-shopping-items.sql`。
 
 ## 檢查指令
 

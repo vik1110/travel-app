@@ -1403,7 +1403,7 @@
 <div class="shop-overlay" id="shop-overlay">
   <div class="shop-header">
     <button class="shop-close-btn" onclick="closeShoppingModal()">✕</button>
-    <div class="shop-overline"><span class="gold-line"></span>Wish List</div>
+    <div class="shop-overline"><span class="gold-line"></span>Wish List · <span id="shop-storage-mode">本機暫存</span></div>
     <h2 class="shop-h2">購買<em>清單</em></h2>
     <div class="shop-user-tabs">
       <button class="shop-user-tab active" id="shop-tab-vik" onclick="switchShopUser('vik',this)">👩 Vik</button>
@@ -1473,128 +1473,6 @@
 </nav>
 
 <script src="app.js"></script>
-<script>
-(function() {
-  var _shopUser = 'vik';
-  var _shopPhoto = null;
-
-  window.openShoppingModal = function() {
-    document.getElementById('shop-overlay').classList.add('open');
-    renderShopList();
-  };
-
-  window.closeShoppingModal = function() {
-    document.getElementById('shop-overlay').classList.remove('open');
-    clearShopForm();
-  };
-
-  window.switchShopUser = function(user, btn) {
-    _shopUser = user;
-    document.querySelectorAll('.shop-user-tab').forEach(function(t) { t.classList.remove('active'); });
-    btn.classList.add('active');
-    renderShopList();
-  };
-
-  function getItems() {
-    try { return JSON.parse(localStorage.getItem('shopping_' + _shopUser) || '[]'); }
-    catch(e) { return []; }
-  }
-  function saveItems(arr) {
-    try { localStorage.setItem('shopping_' + _shopUser, JSON.stringify(arr)); } catch(e) {}
-  }
-
-  window.handleShopPhoto = function(e) {
-    var file = e.target.files && e.target.files[0];
-    if (!file) return;
-    document.getElementById('shop-photo-hint').textContent = file.name;
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-      compressImg(ev.target.result, 800, 0.72, function(data) {
-        _shopPhoto = data;
-        var prev = document.getElementById('shop-photo-preview');
-        prev.src = data; prev.style.display = 'block';
-      });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  function compressImg(src, maxPx, q, cb) {
-    var img = new Image();
-    img.onload = function() {
-      var w = img.width, h = img.height;
-      var scale = (w > maxPx || h > maxPx) ? maxPx / Math.max(w, h) : 1;
-      var c = document.createElement('canvas');
-      c.width = Math.round(w * scale); c.height = Math.round(h * scale);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      cb(c.toDataURL('image/jpeg', q));
-    };
-    img.src = src;
-  }
-
-  window.addShopItem = function() {
-    var text = (document.getElementById('shop-text').value || '').trim();
-    if (!text) { document.getElementById('shop-text').focus(); return; }
-    var note = (document.getElementById('shop-note').value || '').trim();
-    var arr = getItems();
-    arr.unshift({ id: Date.now().toString(), text: text, note: note, photo: _shopPhoto, checked: false });
-    saveItems(arr);
-    clearShopForm();
-    renderShopList();
-  };
-
-  window.toggleShopItem = function(id) {
-    saveItems(getItems().map(function(it) {
-      return it.id === id ? Object.assign({}, it, { checked: !it.checked }) : it;
-    }));
-    renderShopList();
-  };
-
-  window.deleteShopItem = function(id) {
-    saveItems(getItems().filter(function(it) { return it.id !== id; }));
-    renderShopList();
-  };
-
-  function clearShopForm() {
-    document.getElementById('shop-text').value = '';
-    document.getElementById('shop-note').value = '';
-    document.getElementById('shop-photo-hint').textContent = '';
-    var prev = document.getElementById('shop-photo-preview');
-    prev.src = ''; prev.style.display = 'none';
-    document.getElementById('shop-photo-input').value = '';
-    _shopPhoto = null;
-  }
-
-  function esc(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  function renderShopList() {
-    var el = document.getElementById('shop-list');
-    if (!el) return;
-    var arr = getItems();
-    if (!arr.length) {
-      el.innerHTML = '<div class="shop-empty"><div class="shop-empty-icon">🛍</div>還沒有品項，新增第一件想買的東西！</div>';
-      return;
-    }
-    var sorted = arr.filter(function(it) { return !it.checked; })
-                    .concat(arr.filter(function(it) { return it.checked; }));
-    el.innerHTML = sorted.map(function(it) {
-      var photoHtml = it.photo ? '<img class="shop-item-img" src="' + it.photo + '" alt="">' : '';
-      var noteHtml = it.note ? '<div class="shop-item-note">' + esc(it.note) + '</div>' : '';
-      return '<div class="shop-item' + (it.checked ? ' checked' : '') + '">'
-        + '<button class="shop-item-tick" onclick="toggleShopItem(\'' + esc(it.id) + '\')">'
-        + (it.checked ? '✓' : '')
-        + '</button>'
-        + '<div class="shop-item-body">'
-        + '<div class="shop-item-text">' + esc(it.text) + '</div>'
-        + noteHtml + photoHtml
-        + '</div>'
-        + '<button class="shop-item-del" onclick="deleteShopItem(\'' + esc(it.id) + '\')">🗑</button>'
-        + '</div>';
-    }).join('');
-  }
-})();
-</script>
 
 <!-- USJ 票券 lightbox -->
 <div class="ticket-overlay" id="ticket-overlay" onclick="if(!_lbZoomed)closeTicket()">

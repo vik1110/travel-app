@@ -402,12 +402,17 @@
 	  let itineraryLoadPromisesByTrip = {};
 	  let checklistCacheByTrip = {};
 	  let checklistLoadPromisesByTrip = {};
+	  let shoppingCacheByTrip = {};
+	  let shoppingLoadPromisesByTrip = {};
 	  let expenseRenderSeq = 0;
 	  let itineraryRenderSeq = 0;
 	  let checklistRenderSeq = 0;
+	  let shoppingRenderSeq = 0;
 	  let activeTripId = null;
 	  let activeTrip = null;
 	  let flagManuallyEdited = false;
+	  let shoppingUser = 'vik';
+	  let shoppingPhoto = null;
 	  const ACTIVE_TRIP_STORAGE_KEY = 'travel_active_trip_id';
 	  const ORIGINAL_INFO_HTML = document.getElementById('page-info')?.innerHTML || '';
 
@@ -598,6 +603,7 @@
 	    expenseRenderSeq += 1;
 	    itineraryRenderSeq += 1;
 	    checklistRenderSeq += 1;
+	    shoppingRenderSeq += 1;
 	    renderActiveTripUI(trips);
 	    updateTripCardSelection();
 	    if (options.navigate !== false) switchPage('home');
@@ -747,6 +753,7 @@
 	    resetPayerSelection();
 	    applySavedChecks();
 	    renderExpenses();
+	    renderShopList();
 	  }
 
 	  function updateTripCardSelection() {
@@ -1197,8 +1204,11 @@
 	    itineraryLoadPromisesByTrip = {};
 	    checklistCacheByTrip = {};
 	    checklistLoadPromisesByTrip = {};
+	    shoppingCacheByTrip = {};
+	    shoppingLoadPromisesByTrip = {};
 	    itineraryRenderSeq += 1;
 	    checklistRenderSeq += 1;
+	    shoppingRenderSeq += 1;
 	    updateAuthUI();
 	    await renderTrips();
 	  }
@@ -1242,8 +1252,11 @@
 	    itineraryLoadPromisesByTrip = {};
 	    checklistCacheByTrip = {};
 	    checklistLoadPromisesByTrip = {};
+	    shoppingCacheByTrip = {};
+	    shoppingLoadPromisesByTrip = {};
 	    itineraryRenderSeq += 1;
 	    checklistRenderSeq += 1;
+	    shoppingRenderSeq += 1;
 	    updateAuthUI();
 	    await renderTrips();
 	  }
@@ -1331,8 +1344,11 @@
 	    itineraryLoadPromisesByTrip = {};
 	    checklistCacheByTrip = {};
 	    checklistLoadPromisesByTrip = {};
+	    shoppingCacheByTrip = {};
+	    shoppingLoadPromisesByTrip = {};
 	    itineraryRenderSeq += 1;
 	    checklistRenderSeq += 1;
+	    shoppingRenderSeq += 1;
 	    updateAuthUI();
 	    await renderTrips();
 	  }
@@ -1349,8 +1365,11 @@
 	    itineraryLoadPromisesByTrip = {};
 	    checklistCacheByTrip = {};
 	    checklistLoadPromisesByTrip = {};
+	    shoppingCacheByTrip = {};
+	    shoppingLoadPromisesByTrip = {};
 	    itineraryRenderSeq += 1;
 	    checklistRenderSeq += 1;
+	    shoppingRenderSeq += 1;
 	    updateAuthUI();
 	    await renderTrips();
 	  }
@@ -1384,12 +1403,15 @@
 		tripsCache = null;
 		expensesCacheByTrip = {};
 		itineraryCacheByTrip = {};
-		itineraryLoadPromisesByTrip = {};
-		checklistCacheByTrip = {};
-		checklistLoadPromisesByTrip = {};
-		itineraryRenderSeq += 1;
-		checklistRenderSeq += 1;
-	        updateAuthUI(isPasswordRecoveryMode ? '請設定新密碼' : undefined);
+			itineraryLoadPromisesByTrip = {};
+			checklistCacheByTrip = {};
+			checklistLoadPromisesByTrip = {};
+			shoppingCacheByTrip = {};
+			shoppingLoadPromisesByTrip = {};
+			itineraryRenderSeq += 1;
+			checklistRenderSeq += 1;
+			shoppingRenderSeq += 1;
+		        updateAuthUI(isPasswordRecoveryMode ? '請設定新密碼' : undefined);
 	        if (isPasswordRecoveryMode) {
 	          setTimeout(() => {
 	            const input = document.getElementById('auth-new-password');
@@ -2349,6 +2371,295 @@
     });
     sumEl.innerHTML = html;
     sumEl.style.display = 'block';
+  }
+
+  /* ─── Shopping List ─── */
+  function getShoppingCacheKey(user = shoppingUser, tripId = activeTripId) {
+    return `${tripId || 'local'}:${user}`;
+  }
+
+  function canUseRemoteShopping() {
+    return !!(getSupabaseClient() && currentUser && activeTripId);
+  }
+
+  function getShoppingModeLabel() {
+    return canUseRemoteShopping() ? '儲存到 Supabase' : '本機暫存';
+  }
+
+  function updateShoppingStorageMode() {
+    const mode = document.getElementById('shop-storage-mode');
+    if (!mode) return;
+    mode.textContent = getShoppingModeLabel();
+    mode.classList.toggle('remote', canUseRemoteShopping());
+    mode.classList.toggle('local', !canUseRemoteShopping());
+  }
+
+  function getLocalShoppingItems(user = shoppingUser) {
+    try { return JSON.parse(localStorage.getItem(`shopping_${user}`) || '[]'); } catch(e) { return []; }
+  }
+
+  function saveLocalShoppingItems(items, user = shoppingUser) {
+    try { localStorage.setItem(`shopping_${user}`, JSON.stringify(items)); } catch(e) {}
+  }
+
+  function shoppingItemFromRow(row) {
+    return {
+      id: row.id,
+      text: row.title || '',
+      note: row.note || '',
+      photo: row.photo_data || '',
+      checked: !!row.checked,
+      sortOrder: Number(row.sort_order) || 0,
+      ownerKey: row.owner_key || shoppingUser
+    };
+  }
+
+  async function getShoppingItems(user = shoppingUser) {
+    const cacheKey = getShoppingCacheKey(user);
+    const client = getSupabaseClient();
+    if (!client || !currentUser || !activeTripId) return getLocalShoppingItems(user);
+    if (Array.isArray(shoppingCacheByTrip[cacheKey])) return shoppingCacheByTrip[cacheKey];
+    if (shoppingLoadPromisesByTrip[cacheKey]) return shoppingLoadPromisesByTrip[cacheKey];
+
+    shoppingLoadPromisesByTrip[cacheKey] = (async () => {
+      const { data, error } = await client
+        .from('shopping_items')
+        .select('id, owner_key, title, note, photo_data, checked, sort_order, created_at')
+        .eq('group_id', TRAVEL_GROUP_ID)
+        .eq('trip_id', activeTripId)
+        .eq('owner_key', user)
+        .order('sort_order', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase shopping items load failed:', error);
+        return getLocalShoppingItems(user);
+      }
+
+      const items = (data || []).map(shoppingItemFromRow);
+      shoppingCacheByTrip[cacheKey] = items;
+      return items;
+    })().finally(() => {
+      delete shoppingLoadPromisesByTrip[cacheKey];
+    });
+
+    return shoppingLoadPromisesByTrip[cacheKey];
+  }
+
+  function clearShopForm() {
+    const text = document.getElementById('shop-text');
+    const note = document.getElementById('shop-note');
+    const hint = document.getElementById('shop-photo-hint');
+    const prev = document.getElementById('shop-photo-preview');
+    const input = document.getElementById('shop-photo-input');
+    if (text) text.value = '';
+    if (note) note.value = '';
+    if (hint) hint.textContent = '';
+    if (prev) { prev.src = ''; prev.style.display = 'none'; }
+    if (input) input.value = '';
+    shoppingPhoto = null;
+  }
+
+  function compressShoppingImage(src, maxPx, q, cb) {
+    const img = new Image();
+    img.onload = function() {
+      const scale = (img.width > maxPx || img.height > maxPx) ? maxPx / Math.max(img.width, img.height) : 1;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      cb(canvas.toDataURL('image/jpeg', q));
+    };
+    img.src = src;
+  }
+
+  function handleShopPhoto(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const hint = document.getElementById('shop-photo-hint');
+    if (hint) hint.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      compressShoppingImage(ev.target.result, 800, 0.72, function(data) {
+        shoppingPhoto = data;
+        const prev = document.getElementById('shop-photo-preview');
+        if (prev) { prev.src = data; prev.style.display = 'block'; }
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function openShoppingModal() {
+    const overlay = document.getElementById('shop-overlay');
+    if (!overlay) return;
+    overlay.classList.add('open');
+    await renderShopList();
+  }
+
+  function closeShoppingModal() {
+    const overlay = document.getElementById('shop-overlay');
+    if (overlay) overlay.classList.remove('open');
+    clearShopForm();
+  }
+
+  async function switchShopUser(user, btn) {
+    shoppingUser = user;
+    document.querySelectorAll('.shop-user-tab').forEach(tab => tab.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    await renderShopList();
+  }
+
+  async function addShopItem() {
+    const textEl = document.getElementById('shop-text');
+    const noteEl = document.getElementById('shop-note');
+    const text = (textEl?.value || '').trim();
+    if (!text) { if (textEl) textEl.focus(); return; }
+    const note = (noteEl?.value || '').trim();
+    const item = {
+      id: Date.now().toString(),
+      text,
+      note,
+      photo: shoppingPhoto,
+      checked: false,
+      sortOrder: Date.now(),
+      ownerKey: shoppingUser
+    };
+
+    const client = getSupabaseClient();
+    if (client && currentUser && activeTripId) {
+      const { data, error } = await client
+        .from('shopping_items')
+        .insert({
+          group_id: TRAVEL_GROUP_ID,
+          trip_id: activeTripId,
+          owner_key: shoppingUser,
+          title: text,
+          note,
+          photo_data: shoppingPhoto,
+          checked: false,
+          sort_order: item.sortOrder,
+          created_by: currentUser.id
+        })
+        .select('id, owner_key, title, note, photo_data, checked, sort_order, created_at')
+        .single();
+
+      if (error) {
+        alert(`購買清單儲存失敗：${error.message || error.details || '未知 Supabase 錯誤'}`);
+        console.warn('Supabase shopping item insert failed:', error);
+        return;
+      }
+
+      const cacheKey = getShoppingCacheKey(shoppingUser);
+      if (shoppingCacheByTrip[cacheKey]) shoppingCacheByTrip[cacheKey].unshift(shoppingItemFromRow(data));
+    } else {
+      const arr = getLocalShoppingItems();
+      arr.unshift(item);
+      saveLocalShoppingItems(arr);
+    }
+
+    clearShopForm();
+    await renderShopList();
+  }
+
+  async function toggleShopItem(id) {
+    const cacheKey = getShoppingCacheKey(shoppingUser);
+    const items = await getShoppingItems();
+    const target = items.find(item => String(item.id) === String(id));
+    if (!target) return;
+    const nextChecked = !target.checked;
+
+    const client = getSupabaseClient();
+    if (client && currentUser && activeTripId) {
+      const { error } = await client
+        .from('shopping_items')
+        .update({ checked: nextChecked })
+        .eq('id', id)
+        .eq('group_id', TRAVEL_GROUP_ID)
+        .eq('trip_id', activeTripId)
+        .eq('owner_key', shoppingUser);
+
+      if (error) {
+        alert(`購買清單更新失敗：${error.message || error.details || '未知 Supabase 錯誤'}`);
+        console.warn('Supabase shopping item update failed:', error);
+        return;
+      }
+
+      if (shoppingCacheByTrip[cacheKey]) {
+        shoppingCacheByTrip[cacheKey] = shoppingCacheByTrip[cacheKey].map(item =>
+          String(item.id) === String(id) ? { ...item, checked: nextChecked } : item
+        );
+      }
+    } else {
+      saveLocalShoppingItems(getLocalShoppingItems().map(item =>
+        String(item.id) === String(id) ? { ...item, checked: nextChecked } : item
+      ));
+    }
+
+    await renderShopList();
+  }
+
+  async function deleteShopItem(id) {
+    const client = getSupabaseClient();
+    const cacheKey = getShoppingCacheKey(shoppingUser);
+    if (client && currentUser && activeTripId) {
+      const { error } = await client
+        .from('shopping_items')
+        .delete()
+        .eq('id', id)
+        .eq('group_id', TRAVEL_GROUP_ID)
+        .eq('trip_id', activeTripId)
+        .eq('owner_key', shoppingUser);
+
+      if (error) {
+        alert(`購買清單刪除失敗：${error.message || error.details || '未知 Supabase 錯誤'}`);
+        console.warn('Supabase shopping item delete failed:', error);
+        return;
+      }
+
+      if (shoppingCacheByTrip[cacheKey]) {
+        shoppingCacheByTrip[cacheKey] = shoppingCacheByTrip[cacheKey].filter(item => String(item.id) !== String(id));
+      }
+    } else {
+      saveLocalShoppingItems(getLocalShoppingItems().filter(item => String(item.id) !== String(id)));
+    }
+
+    await renderShopList();
+  }
+
+  async function renderShopList() {
+    const el = document.getElementById('shop-list');
+    if (!el) return;
+    updateShoppingStorageMode();
+    const seq = ++shoppingRenderSeq;
+    const renderTripId = activeTripId;
+    const renderUser = shoppingUser;
+    const cacheKey = getShoppingCacheKey(renderUser, renderTripId);
+    if (canUseRemoteShopping() && !shoppingCacheByTrip[cacheKey]) {
+      el.innerHTML = '<div class="shop-empty"><div class="shop-empty-icon">🛍</div>載入購買清單中...</div>';
+    }
+
+    const items = await getShoppingItems(renderUser);
+    if (seq !== shoppingRenderSeq || renderTripId !== activeTripId || renderUser !== shoppingUser) return;
+
+    updateShoppingStorageMode();
+    if (!items.length) {
+      el.innerHTML = '<div class="shop-empty"><div class="shop-empty-icon">🛍</div>還沒有品項，新增第一件想買的東西！</div>';
+      return;
+    }
+
+    const sorted = items.filter(item => !item.checked).concat(items.filter(item => item.checked));
+    el.innerHTML = sorted.map(item => {
+      const photoHtml = item.photo ? `<img class="shop-item-img" src="${escapeHtml(item.photo)}" alt="">` : '';
+      const noteHtml = item.note ? `<div class="shop-item-note">${escapeHtml(item.note)}</div>` : '';
+      const idArg = escapeJsArg(String(item.id));
+      return `<div class="shop-item${item.checked ? ' checked' : ''}">
+        <button class="shop-item-tick" onclick="toggleShopItem('${idArg}')">${item.checked ? '✓' : ''}</button>
+        <div class="shop-item-body">
+          <div class="shop-item-text">${escapeHtml(item.text)}</div>
+          ${noteHtml}${photoHtml}
+        </div>
+        <button class="shop-item-del" onclick="deleteShopItem('${idArg}')">🗑</button>
+      </div>`;
+    }).join('');
   }
 
   // ── Ticket lightbox ──

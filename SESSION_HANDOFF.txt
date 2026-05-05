@@ -273,6 +273,34 @@ curl -I http://127.0.0.1:5550/assets/usj-express-pass.png
 - TRAVEL_GROUP_ID -> group_id
 
 
+第六階段：搬購買清單
+-------------------
+1. 首頁「購買清單」overlay 保留原 UI。
+2. 登入且有 active trip 時，購買清單會讀寫 public.shopping_items。
+3. 未登入、Supabase 不可用、或 shopping_items 尚未建立時，保留 localStorage fallback。
+4. Vik / Mike 分頁對應 shopping_items.owner_key。
+5. 照片會先在前端壓縮，再存入 shopping_items.photo_data。
+
+建表 SQL:
+- supabase-shopping-items.sql
+
+本機 fallback key:
+- shopping_vik
+- shopping_mike
+
+對應 Supabase:
+- public.shopping_items
+
+欄位對應:
+- 品項 -> shopping_items.title
+- 備註 -> shopping_items.note
+- 照片 data URL -> shopping_items.photo_data
+- checked state -> shopping_items.checked
+- Vik/Mike -> shopping_items.owner_key
+- activeTripId -> trip_id
+- TRAVEL_GROUP_ID -> group_id
+
+
 已知風險 / 注意事項
 -------------------
 1. 前端已從單檔拆成 index.html / styles.css / app.js / assets/usj-express-pass.png；修改時注意同步引用路徑。
@@ -331,5 +359,6 @@ where schemaname = 'public'
     'itinerary_days',
     'itinerary_items',
     'expenses',
-    'checklist_items'
+    'checklist_items',
+    'shopping_items'
   );
