@@ -297,6 +297,7 @@ curl -I http://127.0.0.1:5550/assets/usj-express-pass.png
 - 照片 data URL -> shopping_items.photo_data
 - checked state -> shopping_items.checked
 - Vik/Mike -> shopping_items.owner_key
+- 文字/圖片分類 -> shopping_items.item_type
 - activeTripId -> trip_id
 - TRAVEL_GROUP_ID -> group_id
 

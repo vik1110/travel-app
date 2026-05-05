@@ -2394,9 +2394,20 @@
     mode.classList.toggle('local', !canUseRemoteShopping());
   }
 
-  function getLocalShoppingItems(user = shoppingUser) {
-    try { return JSON.parse(localStorage.getItem(`shopping_${user}`) || '[]'); } catch(e) { return []; }
-  }
+	  function getLocalShoppingItems(user = shoppingUser) {
+	    try {
+	      const raw = localStorage.getItem(`shopping_${user}`);
+	      const merged = JSON.parse(raw || '[]');
+	      if (raw !== null && Array.isArray(merged)) {
+	        return merged.map(item => ({ itemType: item.itemType || (item.photo && !item.text ? 'photo' : 'text'), ...item }));
+	      }
+	      const texts = JSON.parse(localStorage.getItem(`shop_texts_${user}`) || '[]')
+	        .map(item => ({ ...item, itemType: 'text' }));
+	      const photos = JSON.parse(localStorage.getItem(`shop_photos_${user}`) || '[]')
+	        .map(item => ({ id: item.id, text: '圖片', note: '', photo: item.src, checked: false, itemType: 'photo' }));
+	      return texts.concat(photos);
+	    } catch(e) { return []; }
+	  }
 
   function saveLocalShoppingItems(items, user = shoppingUser) {
     try { localStorage.setItem(`shopping_${user}`, JSON.stringify(items)); } catch(e) {}
@@ -2407,12 +2418,13 @@
       id: row.id,
       text: row.title || '',
       note: row.note || '',
-      photo: row.photo_data || '',
-      checked: !!row.checked,
-      sortOrder: Number(row.sort_order) || 0,
-      ownerKey: row.owner_key || shoppingUser
-    };
-  }
+	      photo: row.photo_data || '',
+	      checked: !!row.checked,
+	      sortOrder: Number(row.sort_order) || 0,
+	      ownerKey: row.owner_key || shoppingUser,
+	      itemType: row.item_type || (row.photo_data && row.title === '圖片' ? 'photo' : 'text')
+	    };
+	  }
 
   async function getShoppingItems(user = shoppingUser) {
     const cacheKey = getShoppingCacheKey(user);
@@ -2422,9 +2434,9 @@
     if (shoppingLoadPromisesByTrip[cacheKey]) return shoppingLoadPromisesByTrip[cacheKey];
 
     shoppingLoadPromisesByTrip[cacheKey] = (async () => {
-      const { data, error } = await client
-        .from('shopping_items')
-        .select('id, owner_key, title, note, photo_data, checked, sort_order, created_at')
+	      const { data, error } = await client
+	        .from('shopping_items')
+	        .select('id, owner_key, item_type, title, note, photo_data, checked, sort_order, created_at')
         .eq('group_id', TRAVEL_GROUP_ID)
         .eq('trip_id', activeTripId)
         .eq('owner_key', user)
@@ -2445,10 +2457,10 @@
     return shoppingLoadPromisesByTrip[cacheKey];
   }
 
-  function clearShopForm() {
-    const text = document.getElementById('shop-text');
-    const note = document.getElementById('shop-note');
-    const hint = document.getElementById('shop-photo-hint');
+	  function clearShopForm() {
+	    const text = document.getElementById('shop-text');
+	    const note = document.getElementById('shop-note');
+	    const hint = document.getElementById('shop-photo-hint');
     const prev = document.getElementById('shop-photo-preview');
     const input = document.getElementById('shop-photo-input');
     if (text) text.value = '';
@@ -2456,8 +2468,8 @@
     if (hint) hint.textContent = '';
     if (prev) { prev.src = ''; prev.style.display = 'none'; }
     if (input) input.value = '';
-    shoppingPhoto = null;
-  }
+	    shoppingPhoto = null;
+	  }
 
   function compressShoppingImage(src, maxPx, q, cb) {
     const img = new Image();
@@ -2472,28 +2484,98 @@
     img.src = src;
   }
 
-  function handleShopPhoto(e) {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const hint = document.getElementById('shop-photo-hint');
-    if (hint) hint.textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-      compressShoppingImage(ev.target.result, 800, 0.72, function(data) {
+	  async function saveShoppingItem(item) {
+	    const client = getSupabaseClient();
+	    if (client && currentUser && activeTripId) {
+	      const { data, error } = await client
+	        .from('shopping_items')
+	        .insert({
+	          group_id: TRAVEL_GROUP_ID,
+	          trip_id: activeTripId,
+	          owner_key: shoppingUser,
+	          item_type: item.itemType,
+	          title: item.text,
+	          note: item.note || '',
+	          photo_data: item.photo || null,
+	          checked: !!item.checked,
+	          sort_order: item.sortOrder,
+	          created_by: currentUser.id
+	        })
+	        .select('id, owner_key, item_type, title, note, photo_data, checked, sort_order, created_at')
+	        .single();
+
+	      if (error) {
+	        alert(`購買清單儲存失敗：${error.message || error.details || '未知 Supabase 錯誤'}`);
+	        console.warn('Supabase shopping item insert failed:', error);
+	        return false;
+	      }
+
+	      const cacheKey = getShoppingCacheKey(shoppingUser);
+	      if (shoppingCacheByTrip[cacheKey]) shoppingCacheByTrip[cacheKey].unshift(shoppingItemFromRow(data));
+	      return true;
+	    }
+
+	    const arr = getLocalShoppingItems();
+	    arr.unshift(item);
+	    saveLocalShoppingItems(arr);
+	    return true;
+	  }
+
+	  function handleShopPhoto(e) {
+	    handleShopPhotos(e);
+	  }
+
+	  function handleShopPhotos(e) {
+	    const files = Array.from(e.target.files || []);
+	    if (!files.length) return;
+	    let done = 0;
+	    files.forEach(file => {
+	      const reader = new FileReader();
+	      reader.onload = function(ev) {
+	        compressShoppingImage(ev.target.result, 800, 0.72, async function(data) {
+	          await saveShoppingItem({
+	            id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+	            text: '圖片',
+	            note: '',
+	            photo: data,
+	            checked: false,
+	            itemType: 'photo',
+	            sortOrder: Date.now()
+	          });
+	          done += 1;
+	          if (done === files.length) {
+	            e.target.value = '';
+	            await renderShopList();
+	          }
+	        });
+	      };
+	      reader.readAsDataURL(file);
+	    });
+	  }
+
+	  function prepareShopPhotoPreview(e) {
+	    const file = e.target.files && e.target.files[0];
+	    if (!file) return;
+	    const hint = document.getElementById('shop-photo-hint');
+	    if (hint) hint.textContent = file.name;
+	    const reader = new FileReader();
+	    reader.onload = function(ev) {
+	      compressShoppingImage(ev.target.result, 800, 0.72, function(data) {
         shoppingPhoto = data;
         const prev = document.getElementById('shop-photo-preview');
         if (prev) { prev.src = data; prev.style.display = 'block'; }
       });
-    };
-    reader.readAsDataURL(file);
-  }
+	    };
+	    reader.readAsDataURL(file);
+	  }
 
   async function openShoppingModal() {
-    const overlay = document.getElementById('shop-overlay');
-    if (!overlay) return;
-    overlay.classList.add('open');
-    await renderShopList();
-  }
+	    const overlay = document.getElementById('shop-overlay');
+	    if (!overlay) return;
+	    overlay.classList.add('open');
+	    setupShopLightboxHandlers();
+	    await renderShopList();
+	  }
 
   function closeShoppingModal() {
     const overlay = document.getElementById('shop-overlay');
@@ -2505,64 +2587,44 @@
     shoppingUser = user;
     document.querySelectorAll('.shop-user-tab').forEach(tab => tab.classList.remove('active'));
     if (btn) btn.classList.add('active');
-    await renderShopList();
-  }
+	    await renderShopList();
+	  }
 
-  async function addShopItem() {
-    const textEl = document.getElementById('shop-text');
-    const noteEl = document.getElementById('shop-note');
-    const text = (textEl?.value || '').trim();
+	  async function addShopItem() {
+	    await addShopText();
+	  }
+
+	  async function addShopText() {
+	    const textEl = document.getElementById('shop-text');
+	    const noteEl = document.getElementById('shop-note');
+	    const text = (textEl?.value || '').trim();
     if (!text) { if (textEl) textEl.focus(); return; }
     const note = (noteEl?.value || '').trim();
     const item = {
       id: Date.now().toString(),
       text,
-      note,
-      photo: shoppingPhoto,
-      checked: false,
-      sortOrder: Date.now(),
-      ownerKey: shoppingUser
-    };
+	      note,
+	      photo: '',
+	      checked: false,
+	      sortOrder: Date.now(),
+	      ownerKey: shoppingUser,
+	      itemType: 'text'
+	    };
 
-    const client = getSupabaseClient();
-    if (client && currentUser && activeTripId) {
-      const { data, error } = await client
-        .from('shopping_items')
-        .insert({
-          group_id: TRAVEL_GROUP_ID,
-          trip_id: activeTripId,
-          owner_key: shoppingUser,
-          title: text,
-          note,
-          photo_data: shoppingPhoto,
-          checked: false,
-          sort_order: item.sortOrder,
-          created_by: currentUser.id
-        })
-        .select('id, owner_key, title, note, photo_data, checked, sort_order, created_at')
-        .single();
+	    const ok = await saveShoppingItem(item);
+	    if (!ok) return;
 
-      if (error) {
-        alert(`購買清單儲存失敗：${error.message || error.details || '未知 Supabase 錯誤'}`);
-        console.warn('Supabase shopping item insert failed:', error);
-        return;
-      }
+	    clearShopForm();
+	    await renderShopList();
+	  }
 
-      const cacheKey = getShoppingCacheKey(shoppingUser);
-      if (shoppingCacheByTrip[cacheKey]) shoppingCacheByTrip[cacheKey].unshift(shoppingItemFromRow(data));
-    } else {
-      const arr = getLocalShoppingItems();
-      arr.unshift(item);
-      saveLocalShoppingItems(arr);
-    }
+	  async function toggleShopItem(id) {
+	    await toggleShopText(id);
+	  }
 
-    clearShopForm();
-    await renderShopList();
-  }
-
-  async function toggleShopItem(id) {
-    const cacheKey = getShoppingCacheKey(shoppingUser);
-    const items = await getShoppingItems();
+	  async function toggleShopText(id) {
+	    const cacheKey = getShoppingCacheKey(shoppingUser);
+	    const items = await getShoppingItems();
     const target = items.find(item => String(item.id) === String(id));
     if (!target) return;
     const nextChecked = !target.checked;
@@ -2594,10 +2656,10 @@
       ));
     }
 
-    await renderShopList();
-  }
+	    await renderShopList();
+	  }
 
-  async function deleteShopItem(id) {
+	  async function deleteShopItem(id) {
     const client = getSupabaseClient();
     const cacheKey = getShoppingCacheKey(shoppingUser);
     if (client && currentUser && activeTripId) {
@@ -2622,45 +2684,168 @@
       saveLocalShoppingItems(getLocalShoppingItems().filter(item => String(item.id) !== String(id)));
     }
 
-    await renderShopList();
-  }
+	    await renderShopList();
+	  }
 
-  async function renderShopList() {
-    const el = document.getElementById('shop-list');
-    if (!el) return;
-    updateShoppingStorageMode();
-    const seq = ++shoppingRenderSeq;
-    const renderTripId = activeTripId;
+	  async function deleteShopText(id) {
+	    await deleteShopItem(id);
+	  }
+
+	  async function deleteShopPhoto(id) {
+	    await deleteShopItem(id);
+	  }
+
+	  async function renderShopList() {
+	    const textEl = document.getElementById('shop-text-list');
+	    const photoEl = document.getElementById('shop-photo-grid');
+	    if (!textEl && !photoEl) return;
+	    updateShoppingStorageMode();
+	    const seq = ++shoppingRenderSeq;
+	    const renderTripId = activeTripId;
     const renderUser = shoppingUser;
-    const cacheKey = getShoppingCacheKey(renderUser, renderTripId);
-    if (canUseRemoteShopping() && !shoppingCacheByTrip[cacheKey]) {
-      el.innerHTML = '<div class="shop-empty"><div class="shop-empty-icon">🛍</div>載入購買清單中...</div>';
-    }
+	    const cacheKey = getShoppingCacheKey(renderUser, renderTripId);
+	    if (canUseRemoteShopping() && !shoppingCacheByTrip[cacheKey]) {
+	      if (textEl) textEl.innerHTML = '<div class="shop-empty"><div class="shop-empty-icon">📝</div>載入購買清單中...</div>';
+	      if (photoEl) photoEl.innerHTML = '<div class="shop-empty" style="grid-column:1/-1"><div class="shop-empty-icon">📷</div>載入圖片中...</div>';
+	    }
 
-    const items = await getShoppingItems(renderUser);
-    if (seq !== shoppingRenderSeq || renderTripId !== activeTripId || renderUser !== shoppingUser) return;
+	    const items = await getShoppingItems(renderUser);
+	    if (seq !== shoppingRenderSeq || renderTripId !== activeTripId || renderUser !== shoppingUser) return;
 
-    updateShoppingStorageMode();
-    if (!items.length) {
-      el.innerHTML = '<div class="shop-empty"><div class="shop-empty-icon">🛍</div>還沒有品項，新增第一件想買的東西！</div>';
-      return;
-    }
+	    updateShoppingStorageMode();
+	    renderShopTexts(items);
+	    renderShopPhotos(items);
+	  }
 
-    const sorted = items.filter(item => !item.checked).concat(items.filter(item => item.checked));
-    el.innerHTML = sorted.map(item => {
-      const photoHtml = item.photo ? `<img class="shop-item-img" src="${escapeHtml(item.photo)}" alt="">` : '';
-      const noteHtml = item.note ? `<div class="shop-item-note">${escapeHtml(item.note)}</div>` : '';
-      const idArg = escapeJsArg(String(item.id));
-      return `<div class="shop-item${item.checked ? ' checked' : ''}">
-        <button class="shop-item-tick" onclick="toggleShopItem('${idArg}')">${item.checked ? '✓' : ''}</button>
-        <div class="shop-item-body">
-          <div class="shop-item-text">${escapeHtml(item.text)}</div>
-          ${noteHtml}${photoHtml}
-        </div>
-        <button class="shop-item-del" onclick="deleteShopItem('${idArg}')">🗑</button>
-      </div>`;
-    }).join('');
-  }
+	  function renderShopTexts(items = null) {
+	    const el = document.getElementById('shop-text-list');
+	    if (!el) return;
+	    const all = items || getLocalShoppingItems();
+	    const textItems = all.filter(item => (item.itemType || 'text') !== 'photo');
+	    if (!textItems.length) {
+	      el.innerHTML = '<div class="shop-empty"><div class="shop-empty-icon">📝</div>還沒有品項</div>';
+	      return;
+	    }
+	    const sorted = textItems.filter(item => !item.checked).concat(textItems.filter(item => item.checked));
+	    el.innerHTML = sorted.map(item => {
+	      const noteHtml = item.note ? `<div class="shop-item-note">${escapeHtml(item.note)}</div>` : '';
+	      const idArg = escapeJsArg(String(item.id));
+	      return `<div class="shop-item${item.checked ? ' checked' : ''}">
+	        <button class="shop-item-tick" onclick="toggleShopText('${idArg}')">${item.checked ? '✓' : ''}</button>
+	        <div class="shop-item-body">
+	          <div class="shop-item-text">${escapeHtml(item.text)}</div>
+	          ${noteHtml}
+	        </div>
+	        <button class="shop-item-del" onclick="deleteShopText('${idArg}')">🗑</button>
+	      </div>`;
+	    }).join('');
+	  }
+
+	  function getCurrentShopPhotos(items = null) {
+	    const all = items || getLocalShoppingItems();
+	    return all.filter(item => (item.itemType || 'text') === 'photo' && item.photo);
+	  }
+
+	  function renderShopPhotos(items = null) {
+	    const el = document.getElementById('shop-photo-grid');
+	    const countEl = document.getElementById('shop-photo-count');
+	    if (!el) return;
+	    const photos = getCurrentShopPhotos(items);
+	    if (countEl) countEl.textContent = photos.length ? `${photos.length} 張` : '';
+	    if (!photos.length) {
+	      el.innerHTML = '<div class="shop-empty" style="grid-column:1/-1"><div class="shop-empty-icon">📷</div>還沒有圖片</div>';
+	      return;
+	    }
+	    el.innerHTML = photos.map((photo, index) => {
+	      const idArg = escapeJsArg(String(photo.id));
+	      return `<div class="shop-photo-thumb" onclick="openShopLightbox(${index})">
+	        <img src="${escapeHtml(photo.photo)}" alt="">
+	        <button class="shop-photo-thumb-del" onclick="event.stopPropagation();deleteShopPhoto('${idArg}')">✕</button>
+	      </div>`;
+	    }).join('');
+	  }
+
+	  let shopLightboxPhotos = [];
+	  let shopLightboxIndex = 0;
+	  let shopLightboxScale = 1;
+	  let shopLightboxHandlersReady = false;
+
+	  async function openShopLightbox(index) {
+	    shopLightboxPhotos = getCurrentShopPhotos(await getShoppingItems());
+	    shopLightboxIndex = index;
+	    shopLightboxScale = 1;
+	    renderShopLightbox();
+	    const overlay = document.getElementById('shop-lb');
+	    if (overlay) overlay.classList.add('open');
+	  }
+
+	  function closeShopLightbox() {
+	    const overlay = document.getElementById('shop-lb');
+	    if (overlay) overlay.classList.remove('open');
+	  }
+
+	  function shopLbNav(dir) {
+	    if (shopLightboxPhotos.length < 2) return;
+	    shopLightboxIndex = (shopLightboxIndex + dir + shopLightboxPhotos.length) % shopLightboxPhotos.length;
+	    shopLightboxScale = 1;
+	    renderShopLightbox();
+	  }
+
+	  function renderShopLightbox() {
+	    const img = document.getElementById('shop-lb-img');
+	    const current = shopLightboxPhotos[shopLightboxIndex];
+	    if (!img || !current) return;
+	    img.src = current.photo;
+	    img.style.transform = 'scale(1)';
+	    const show = shopLightboxPhotos.length > 1 ? '' : 'none';
+	    const prev = document.getElementById('shop-lb-prev');
+	    const next = document.getElementById('shop-lb-next');
+	    if (prev) prev.style.display = show;
+	    if (next) next.style.display = show;
+	  }
+
+	  function setupShopLightboxHandlers() {
+	    if (shopLightboxHandlersReady) return;
+	    const wrap = document.getElementById('shop-lb-wrap');
+	    const overlay = document.getElementById('shop-lb');
+	    if (!wrap || !overlay) return;
+	    shopLightboxHandlersReady = true;
+	    let t0x = 0, t0y = 0, pinchDist0 = 0, scale0 = 1, isPinch = false;
+	    wrap.addEventListener('touchstart', function(e) {
+	      e.preventDefault();
+	      if (e.touches.length === 1) {
+	        isPinch = false;
+	        t0x = e.touches[0].clientX;
+	        t0y = e.touches[0].clientY;
+	      } else if (e.touches.length === 2) {
+	        isPinch = true;
+	        pinchDist0 = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+	        scale0 = shopLightboxScale;
+	      }
+	    }, { passive: false });
+	    wrap.addEventListener('touchmove', function(e) {
+	      e.preventDefault();
+	      if (e.touches.length === 2) {
+	        isPinch = true;
+	        const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+	        shopLightboxScale = Math.max(1, Math.min(6, scale0 * d / pinchDist0));
+	        const img = document.getElementById('shop-lb-img');
+	        if (img) img.style.transform = `scale(${shopLightboxScale})`;
+	      }
+	    }, { passive: false });
+	    wrap.addEventListener('touchend', function(e) {
+	      e.preventDefault();
+	      if (!isPinch && e.changedTouches.length === 1 && shopLightboxScale <= 1.05) {
+	        const dx = e.changedTouches[0].clientX - t0x;
+	        const dy = e.changedTouches[0].clientY - t0y;
+	        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) shopLbNav(dx < 0 ? 1 : -1);
+	      }
+	      if (e.touches.length === 0) isPinch = false;
+	    }, { passive: false });
+	    overlay.addEventListener('click', function(e) {
+	      if (e.target === overlay) closeShopLightbox();
+	    });
+	  }
 
   // ── Ticket lightbox ──
   function openTicket() {

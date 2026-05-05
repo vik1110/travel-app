@@ -6,6 +6,7 @@ create table if not exists public.shopping_items (
   group_id uuid not null references public.travel_groups(id) on delete cascade,
   trip_id uuid not null references public.trips(id) on delete cascade,
   owner_key text not null check (owner_key in ('vik', 'mike')),
+  item_type text not null default 'text' check (item_type in ('text', 'photo')),
   title text not null,
   note text,
   photo_data text,
@@ -16,8 +17,21 @@ create table if not exists public.shopping_items (
   updated_at timestamptz not null default now()
 );
 
+alter table public.shopping_items
+  add column if not exists item_type text not null default 'text';
+
+alter table public.shopping_items
+  drop constraint if exists shopping_items_item_type_check;
+
+alter table public.shopping_items
+  add constraint shopping_items_item_type_check
+  check (item_type in ('text', 'photo'));
+
 create index if not exists shopping_items_group_trip_owner_idx
   on public.shopping_items (group_id, trip_id, owner_key, sort_order desc);
+
+create index if not exists shopping_items_group_trip_owner_type_idx
+  on public.shopping_items (group_id, trip_id, owner_key, item_type, sort_order desc);
 
 alter table public.shopping_items enable row level security;
 
