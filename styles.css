@@ -312,6 +312,14 @@
     .subway-btn-wrap {
       margin: 14px 20px 0;
     }
+    .subway-pair-wrap {
+      display: flex;
+      gap: 10px;
+    }
+    .subway-btn-half {
+      flex: 1;
+      min-width: 0;
+    }
     .subway-btn {
       display: flex;
       align-items: center;

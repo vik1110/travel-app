@@ -338,17 +338,21 @@
     <div class="weather-note">📍 京都典型初夏天氣，請出發前確認最新預報</div>
   </div>
 
-  <!-- 🚇 地鐵圖快速開啟 -->
-  <div class="subway-btn-wrap">
-    <button class="subway-btn" onclick="openSubwayModal()" style="font-family:var(--font-sans);">
+  <!-- 🚇 地鐵圖 + 🛍 購買清單 並排 -->
+  <div class="subway-btn-wrap subway-pair-wrap">
+    <button class="subway-btn subway-btn-half" onclick="openSubwayModal()" style="font-family:var(--font-sans);">
       <span class="subway-btn-icon">🚇</span>
       <div class="subway-btn-body">
-        <div class="subway-btn-title">京都地鐵路線圖</div>
-        <div class="subway-btn-sub">烏丸線 × 東西線</div>
-        <div class="subway-btn-line-dots">
-          <span class="subway-btn-line-dot" style="background:var(--interactive);"></span>
-          <span class="subway-btn-line-dot" style="background:var(--primary);"></span>
-        </div>
+        <div class="subway-btn-title">地鐵路線圖</div>
+        <div class="subway-btn-sub">烏丸 × 東西線</div>
+      </div>
+      <span class="subway-btn-arrow">›</span>
+    </button>
+    <button class="subway-btn subway-btn-half" onclick="openShoppingModal()" style="font-family:var(--font-sans);">
+      <span class="subway-btn-icon">🛍</span>
+      <div class="subway-btn-body">
+        <div class="subway-btn-title">購買清單</div>
+        <div class="subway-btn-sub">Vik &amp; Mike</div>
       </div>
       <span class="subway-btn-arrow">›</span>
     </button>
@@ -378,17 +382,6 @@
     </div>
   </div>
 
-  <!-- 🛍 購買清單 -->
-  <div class="subway-btn-wrap" style="margin-top:12px;">
-    <button class="subway-btn" onclick="openShoppingModal()" style="font-family:var(--font-sans);">
-      <span class="subway-btn-icon">🛍</span>
-      <div class="subway-btn-body">
-        <div class="subway-btn-title">購買清單</div>
-        <div class="subway-btn-sub">Vik &amp; Mike 的購物心願單</div>
-      </div>
-      <span class="subway-btn-arrow">›</span>
-    </button>
-  </div>
 
   <!-- ✈️ 航班 Dashboard — 左右並排 -->
   <div class="flight-dashboard">
@@ -1415,20 +1408,21 @@
   <!-- 📝 文字清單 -->
   <div class="shop-section">
     <div class="shop-section-label">📝 文字清單</div>
+  </div>
+  <div class="shop-text-list" id="shop-text-list"></div>
+  <div class="shop-section" style="padding-top:12px;">
     <input class="shop-input" id="shop-text" type="text" placeholder="想買什麼？（例：西陣織手帕、抹茶點心）">
     <input class="shop-input" id="shop-note" type="text" placeholder="備註（店名、顏色…）（可選）">
     <button class="shop-add-btn" onclick="addShopText()">＋ 加入清單</button>
   </div>
-  <div class="shop-list-label">清單</div>
-  <div class="shop-text-list" id="shop-text-list"></div>
 
   <!-- 📷 圖片 -->
   <div class="shop-photo-section">
     <div class="shop-section-label">📷 圖片</div>
     <div class="shop-photo-upload-row">
-      <label class="shop-photo-upload-btn" for="shop-photo-input">選擇照片（最多 5 張）</label>
+      <label class="shop-photo-upload-btn" for="shop-photo-input">選擇照片</label>
       <input type="file" id="shop-photo-input" accept="image/*" multiple style="display:none" onchange="handleShopPhotos(event)">
-      <span class="shop-photo-count" id="shop-photo-count">0 / 5</span>
+      <span class="shop-photo-count" id="shop-photo-count"></span>
     </div>
   </div>
   <div class="shop-photo-grid" id="shop-photo-grid"></div>
@@ -1543,10 +1537,7 @@
   window.handleShopPhotos = function(e) {
     var files = e.target.files;
     if (!files || !files.length) return;
-    var existing = getPhotos();
-    var slots = 5 - existing.length;
-    if (slots <= 0) { alert('最多上傳 5 張圖片'); e.target.value = ''; return; }
-    var toProcess = Math.min(files.length, slots);
+    var toProcess = files.length;
     var processed = 0;
     for (var i = 0; i < toProcess; i++) {
       (function(file) {
@@ -1554,10 +1545,8 @@
         reader.onload = function(ev) {
           compressImg(ev.target.result, 800, 0.72, function(data) {
             var photos = getPhotos();
-            if (photos.length < 5) {
-              photos.push({ id: Date.now().toString() + '_' + Math.random().toString(36).slice(2), src: data });
-              savePhotos(photos);
-            }
+            photos.push({ id: Date.now().toString() + '_' + Math.random().toString(36).slice(2), src: data });
+            savePhotos(photos);
             processed++;
             if (processed === toProcess) {
               e.target.value = '';
@@ -1618,7 +1607,7 @@
     var countEl = document.getElementById('shop-photo-count');
     if (!el) return;
     var photos = getPhotos();
-    if (countEl) countEl.textContent = photos.length + ' / 5';
+    if (countEl) countEl.textContent = photos.length ? photos.length + ' 張' : '';
     if (!photos.length) {
       el.innerHTML = '<div class="shop-empty" style="grid-column:1/-1"><div class="shop-empty-icon">📷</div>還沒有圖片</div>';
       return;
