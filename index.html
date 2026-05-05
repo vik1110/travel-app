@@ -16,6 +16,124 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ══ Shopping List Overlay ══ */
+    .shop-overlay {
+      display: none; position: fixed; inset: 0; z-index: 1000;
+      background: var(--bg); flex-direction: column;
+      overflow-y: auto; overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .shop-overlay.open { display: flex; }
+    .shop-header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--bg); padding: 52px 20px 14px;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .shop-close-btn {
+      position: absolute; top: 52px; right: 20px;
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 1.5px solid var(--border); background: var(--muted-bg);
+      font-size: 15px; color: var(--muted-fg); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .shop-overline {
+      font-size: 10px; font-weight: 600; letter-spacing: .15em;
+      text-transform: uppercase; color: var(--primary);
+      margin-bottom: 4px; display: flex; align-items: center; gap: 6px;
+    }
+    .shop-h2 {
+      font-size: 24px; font-weight: 700;
+      font-family: var(--font-serif); color: var(--fg); margin-bottom: 14px;
+    }
+    .shop-h2 em { font-style: italic; color: var(--interactive); }
+    .shop-user-tabs { display: flex; gap: 8px; }
+    .shop-user-tab {
+      flex: 1; padding: 9px 0; border: 1.5px solid var(--border);
+      background: var(--muted-bg); border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600; color: var(--muted-fg);
+      cursor: pointer; transition: all 0.2s; font-family: var(--font-sans);
+    }
+    .shop-user-tab.active {
+      background: var(--interactive); border-color: var(--interactive); color: #fff;
+    }
+    .shop-form-wrap { padding: 20px 20px 0; flex-shrink: 0; }
+    .shop-sec-label {
+      font-size: 10px; font-weight: 600; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--muted-fg); margin-bottom: 10px;
+    }
+    .shop-input {
+      width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); background: var(--muted-bg);
+      font-size: 15px; color: var(--fg); font-family: var(--font-sans);
+      display: block; margin-bottom: 10px;
+    }
+    .shop-input:focus { outline: none; border-color: var(--interactive); }
+    .shop-photo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .shop-photo-label {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 14px; background: var(--muted-bg);
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600; color: var(--fg);
+      cursor: pointer; white-space: nowrap;
+    }
+    .shop-photo-hint {
+      font-size: 12px; color: var(--muted-fg);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .shop-photo-preview {
+      width: 100%; max-height: 160px; object-fit: contain;
+      border-radius: var(--radius-sm); border: 1px solid var(--border);
+      display: none; margin-bottom: 10px;
+    }
+    .shop-add-btn {
+      width: 100%; padding: 13px; margin-bottom: 20px;
+      background: var(--interactive); color: #fff; border: none;
+      border-radius: var(--radius-sm); font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: var(--font-sans);
+      box-shadow: var(--shadow-btn); transition: transform 0.15s;
+    }
+    .shop-add-btn:active { transform: scale(0.98); }
+    .shop-divider {
+      margin: 0 20px; padding: 16px 0 6px;
+      border-top: 1px solid var(--border);
+      font-size: 10px; font-weight: 600; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--muted-fg);
+    }
+    .shop-list {
+      padding: 0 20px;
+      padding-bottom: calc(env(safe-area-inset-bottom) + 32px);
+    }
+    .shop-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+    }
+    .shop-item-tick {
+      width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px;
+      border: 2px solid var(--border-strong); background: none;
+      cursor: pointer; margin-top: 1px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; font-size: 13px;
+    }
+    .shop-item.checked .shop-item-tick {
+      background: var(--accent); border-color: var(--accent); color: var(--fg);
+    }
+    .shop-item-body { flex: 1; min-width: 0; }
+    .shop-item-text { font-size: 15px; font-weight: 600; color: var(--fg); line-height: 1.4; }
+    .shop-item.checked .shop-item-text { text-decoration: line-through; color: var(--muted-fg); }
+    .shop-item-note { font-size: 12px; color: var(--muted-fg); margin-top: 2px; }
+    .shop-item-img {
+      width: 100%; max-height: 120px; object-fit: cover;
+      border-radius: var(--radius-sm); margin-top: 8px; border: 1px solid var(--border);
+    }
+    .shop-item-del {
+      width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
+      border: none; background: none; color: var(--primary);
+      font-size: 16px; cursor: pointer; opacity: 0.6;
+    }
+    .shop-empty { padding: 50px 0; text-align: center; color: var(--muted-fg); font-size: 14px; }
+    .shop-empty-icon { font-size: 40px; margin-bottom: 10px; }
+  </style>
 </head>
 <body>
 
@@ -285,6 +403,18 @@
       京都七条 · 天然溫泉<br>
       Check-in 5/28（15:00 後）· Check-out 6/1（11:00 前）
     </div>
+  </div>
+
+  <!-- 🛍 購買清單 -->
+  <div class="subway-btn-wrap" style="margin-top:12px;">
+    <button class="subway-btn" onclick="openShoppingModal()" style="font-family:var(--font-sans);">
+      <span class="subway-btn-icon">🛍</span>
+      <div class="subway-btn-body">
+        <div class="subway-btn-title">購買清單</div>
+        <div class="subway-btn-sub">Vik &amp; Mike 的購物心願單</div>
+      </div>
+      <span class="subway-btn-arrow">›</span>
+    </button>
   </div>
 
   <!-- 💡 每日主題 Tips -->
@@ -1268,6 +1398,37 @@
 </div>
 
 <!-- ══════════════════════
+     SHOPPING LIST OVERLAY
+     ══════════════════════ -->
+<div class="shop-overlay" id="shop-overlay">
+  <div class="shop-header">
+    <button class="shop-close-btn" onclick="closeShoppingModal()">✕</button>
+    <div class="shop-overline"><span class="gold-line"></span>Wish List</div>
+    <h2 class="shop-h2">購買<em>清單</em></h2>
+    <div class="shop-user-tabs">
+      <button class="shop-user-tab active" id="shop-tab-vik" onclick="switchShopUser('vik',this)">👩 Vik</button>
+      <button class="shop-user-tab" id="shop-tab-mike" onclick="switchShopUser('mike',this)">👨 Mike</button>
+    </div>
+  </div>
+
+  <div class="shop-form-wrap">
+    <div class="shop-sec-label">📝 新增品項</div>
+    <input class="shop-input" id="shop-text" type="text" placeholder="想買什麼？（例：西陣織手帕、抹茶點心）">
+    <input class="shop-input" id="shop-note" type="text" placeholder="備註（店名、顏色…）（可選）">
+    <div class="shop-photo-row">
+      <label class="shop-photo-label" for="shop-photo-input">📷 上傳照片</label>
+      <input type="file" id="shop-photo-input" accept="image/*" style="display:none" onchange="handleShopPhoto(event)">
+      <span class="shop-photo-hint" id="shop-photo-hint"></span>
+    </div>
+    <img class="shop-photo-preview" id="shop-photo-preview" alt="">
+    <button class="shop-add-btn" onclick="addShopItem()">＋ 加入清單</button>
+  </div>
+
+  <div class="shop-divider">品項列表</div>
+  <div class="shop-list" id="shop-list"></div>
+</div>
+
+<!-- ══════════════════════
      BOTTOM NAV
      ══════════════════════ -->
 <nav class="nav-bar">
@@ -1312,6 +1473,128 @@
 </nav>
 
 <script src="app.js"></script>
+<script>
+(function() {
+  var _shopUser = 'vik';
+  var _shopPhoto = null;
+
+  window.openShoppingModal = function() {
+    document.getElementById('shop-overlay').classList.add('open');
+    renderShopList();
+  };
+
+  window.closeShoppingModal = function() {
+    document.getElementById('shop-overlay').classList.remove('open');
+    clearShopForm();
+  };
+
+  window.switchShopUser = function(user, btn) {
+    _shopUser = user;
+    document.querySelectorAll('.shop-user-tab').forEach(function(t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+    renderShopList();
+  };
+
+  function getItems() {
+    try { return JSON.parse(localStorage.getItem('shopping_' + _shopUser) || '[]'); }
+    catch(e) { return []; }
+  }
+  function saveItems(arr) {
+    try { localStorage.setItem('shopping_' + _shopUser, JSON.stringify(arr)); } catch(e) {}
+  }
+
+  window.handleShopPhoto = function(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    document.getElementById('shop-photo-hint').textContent = file.name;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      compressImg(ev.target.result, 800, 0.72, function(data) {
+        _shopPhoto = data;
+        var prev = document.getElementById('shop-photo-preview');
+        prev.src = data; prev.style.display = 'block';
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  function compressImg(src, maxPx, q, cb) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      var scale = (w > maxPx || h > maxPx) ? maxPx / Math.max(w, h) : 1;
+      var c = document.createElement('canvas');
+      c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      cb(c.toDataURL('image/jpeg', q));
+    };
+    img.src = src;
+  }
+
+  window.addShopItem = function() {
+    var text = (document.getElementById('shop-text').value || '').trim();
+    if (!text) { document.getElementById('shop-text').focus(); return; }
+    var note = (document.getElementById('shop-note').value || '').trim();
+    var arr = getItems();
+    arr.unshift({ id: Date.now().toString(), text: text, note: note, photo: _shopPhoto, checked: false });
+    saveItems(arr);
+    clearShopForm();
+    renderShopList();
+  };
+
+  window.toggleShopItem = function(id) {
+    saveItems(getItems().map(function(it) {
+      return it.id === id ? Object.assign({}, it, { checked: !it.checked }) : it;
+    }));
+    renderShopList();
+  };
+
+  window.deleteShopItem = function(id) {
+    saveItems(getItems().filter(function(it) { return it.id !== id; }));
+    renderShopList();
+  };
+
+  function clearShopForm() {
+    document.getElementById('shop-text').value = '';
+    document.getElementById('shop-note').value = '';
+    document.getElementById('shop-photo-hint').textContent = '';
+    var prev = document.getElementById('shop-photo-preview');
+    prev.src = ''; prev.style.display = 'none';
+    document.getElementById('shop-photo-input').value = '';
+    _shopPhoto = null;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function renderShopList() {
+    var el = document.getElementById('shop-list');
+    if (!el) return;
+    var arr = getItems();
+    if (!arr.length) {
+      el.innerHTML = '<div class="shop-empty"><div class="shop-empty-icon">🛍</div>還沒有品項，新增第一件想買的東西！</div>';
+      return;
+    }
+    var sorted = arr.filter(function(it) { return !it.checked; })
+                    .concat(arr.filter(function(it) { return it.checked; }));
+    el.innerHTML = sorted.map(function(it) {
+      var photoHtml = it.photo ? '<img class="shop-item-img" src="' + it.photo + '" alt="">' : '';
+      var noteHtml = it.note ? '<div class="shop-item-note">' + esc(it.note) + '</div>' : '';
+      return '<div class="shop-item' + (it.checked ? ' checked' : '') + '">'
+        + '<button class="shop-item-tick" onclick="toggleShopItem(\'' + esc(it.id) + '\')">'
+        + (it.checked ? '✓' : '')
+        + '</button>'
+        + '<div class="shop-item-body">'
+        + '<div class="shop-item-text">' + esc(it.text) + '</div>'
+        + noteHtml + photoHtml
+        + '</div>'
+        + '<button class="shop-item-del" onclick="deleteShopItem(\'' + esc(it.id) + '\')">🗑</button>'
+        + '</div>';
+    }).join('');
+  }
+})();
+</script>
 
 <!-- USJ 票券 lightbox -->
 <div class="ticket-overlay" id="ticket-overlay" onclick="if(!_lbZoomed)closeTicket()">
