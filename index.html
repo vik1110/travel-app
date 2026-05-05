@@ -105,15 +105,18 @@
       border: none; background: none; color: var(--primary);
       font-size: 16px; cursor: pointer; opacity: 0.6;
     }
-    .shop-photo-section { padding: 20px 20px 0; border-top: 6px solid var(--border); margin-top: 8px; }
-    .shop-photo-upload-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-    .shop-photo-upload-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 9px 16px; background: var(--muted-bg);
-      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-      font-size: 13px; font-weight: 600; color: var(--fg); cursor: pointer;
+    .shop-photo-section { padding: 16px 20px 0; border-top: 6px solid var(--border); margin-top: 8px; }
+    .shop-photo-header {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 14px;
     }
-    .shop-photo-count { font-size: 12px; color: var(--muted-fg); }
+    .shop-photo-upload-btn {
+      margin-left: auto;
+      display: inline-flex; align-items: center;
+      padding: 6px 12px; background: var(--muted-bg);
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 12px; font-weight: 600; color: var(--fg); cursor: pointer;
+    }
+    .shop-photo-count { font-size: 11px; color: var(--muted-fg); }
     .shop-photo-grid {
       display: grid; grid-template-columns: repeat(3, 1fr);
       gap: 8px; padding: 0 20px;
@@ -1450,11 +1453,11 @@
 
   <!-- 📷 圖片 -->
   <div class="shop-photo-section">
-    <div class="shop-section-label">📷 圖片清單</div>
-    <div class="shop-photo-upload-row">
-      <label class="shop-photo-upload-btn" for="shop-photo-input">選擇照片</label>
-      <input type="file" id="shop-photo-input" accept="image/*" multiple style="display:none" onchange="handleShopPhotos(event)">
+    <div class="shop-photo-header">
+      <span class="shop-section-label" style="margin-bottom:0;">📷 圖片清單</span>
       <span class="shop-photo-count" id="shop-photo-count"></span>
+      <label class="shop-photo-upload-btn" for="shop-photo-input">＋ 選擇照片</label>
+      <input type="file" id="shop-photo-input" accept="image/*" multiple style="display:none" onchange="handleShopPhotos(event)">
     </div>
   </div>
   <div class="shop-photo-grid" id="shop-photo-grid"></div>
