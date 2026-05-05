@@ -5,6 +5,9 @@
 #  流程：origin/main → feature → merge → push
 # ════════════════════════════════════
 
+export PATH="/usr/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
+export GIT_TERMINAL_PROMPT=0
+
 REPO_DIR="/Users/vikwang/Documents/Claude/Projects/Test/Kyoto/test_travel"
 TOKEN=$(cat ~/.travel_token 2>/dev/null)
 
@@ -34,14 +37,18 @@ if [ ! -d ".git" ]; then
   echo "✅ 初始化完成"
 fi
 
-# ── 2. Fetch，切換到 main 並 pull ──────────────────────
+# ── 2. Fetch 遠端狀態 ───────────────────────────────────
 echo "🔍 同步遠端狀態..."
 git fetch origin -q
 
-# 若目前不在 main，把 working directory 的改動帶過去
-if [ "$(git branch --show-current)" != "main" ]; then
-  git checkout main -q 2>/dev/null || git checkout -b main origin/main -q
+# ── 3. Stash → 切換到 main → 同步 → 還原 ──────────────
+STASHED=0
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  git stash push -q -m "deploy-stash"
+  STASHED=1
 fi
+
+git checkout main -q 2>/dev/null || git checkout -b main origin/main -q
 
 BEHIND=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo "0")
 if [ "$BEHIND" -gt 0 ]; then
@@ -51,23 +58,24 @@ else
   echo "✅ 已是最新版本，無需 pull"
 fi
 
-# ── 3. 建立 feature branch ──────────────────────────────
+if [ "$STASHED" -eq 1 ]; then
+  git stash pop -q 2>/dev/null || {
+    echo "⚠️  還原改動時發生衝突，請手動處理"
+    read -n 1; exit 1
+  }
+fi
+
+# ── 4. 建立 feature branch ──────────────────────────────
 echo ""
 echo "🌿 建立分支：$BRANCH"
 git checkout -b "$BRANCH" -q
 
-# ── 4. Stage 要部署的檔案 ────────────────────────────────
-git add \
-  index.html \
-  styles.css \
-  app.js \
-  deploy.command \
-  icon.svg \
-  manifest.json \
-  kyoto_mrt_01.jpg \
-  kyoto_mrt_02.jpg \
-  CLAUDE.md \
-  2>/dev/null
+# ── 5. Stage 要部署的檔案（逐一 add，避免單檔錯誤中斷全部）────
+for f in index.html styles.css app.js deploy.command \
+          icon.svg manifest.json \
+          kyoto_mrt_01.jpg kyoto_mrt_02.jpg CLAUDE.md; do
+  [ -e "$f" ] && git add "$f" 2>/dev/null
+done
 
 CHANGED=$(git diff --cached --name-only)
 
@@ -82,7 +90,7 @@ echo "📝 本次改動的檔案："
 echo "$CHANGED" | sed 's/^/   /'
 git commit -m "✈️ Update $(date +%Y/%m/%d\ %H:%M)" -q
 
-# ── 5. Merge feature → main，推上去 ─────────────────────
+# ── 6. Merge feature → main，推上去 ─────────────────────
 echo ""
 echo "🔀 Merge → main..."
 git checkout main -q
