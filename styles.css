@@ -316,7 +316,7 @@
       display: flex;
       gap: 10px;
     }
-    .subway-btn-half {
+    .subway-pair-wrap .subway-btn {
       flex: 1;
       min-width: 0;
       width: auto;
