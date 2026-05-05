@@ -57,10 +57,9 @@
     .shop-user-tab.active {
       background: var(--primary); border-color: var(--primary); color: var(--fg);
     }
-    .shop-form-wrap { padding: 20px 20px 0; flex-shrink: 0; }
-    .shop-sec-label {
-      font-size: 10px; font-weight: 600; letter-spacing: .12em;
-      text-transform: uppercase; color: var(--muted-fg); margin-bottom: 10px;
+    .shop-section { padding: 20px 20px 0; flex-shrink: 0; }
+    .shop-section-label {
+      font-size: 13px; font-weight: 700; color: var(--fg); margin-bottom: 12px;
     }
     .shop-input {
       width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
@@ -69,23 +68,6 @@
       display: block; margin-bottom: 10px;
     }
     .shop-input:focus { outline: none; border-color: var(--primary); }
-    .shop-photo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .shop-photo-label {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 9px 14px; background: var(--muted-bg);
-      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-      font-size: 13px; font-weight: 600; color: var(--fg);
-      cursor: pointer; white-space: nowrap;
-    }
-    .shop-photo-hint {
-      font-size: 12px; color: var(--muted-fg);
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .shop-photo-preview {
-      width: 100%; max-height: 160px; object-fit: contain;
-      border-radius: var(--radius-sm); border: 1px solid var(--border);
-      display: none; margin-bottom: 10px;
-    }
     .shop-add-btn {
       width: 100%; padding: 13px; margin-bottom: 20px;
       background: var(--primary); color: var(--fg); border: none;
@@ -94,16 +76,12 @@
       box-shadow: var(--shadow-btn); transition: transform 0.15s;
     }
     .shop-add-btn:active { transform: scale(0.98); }
-    .shop-divider {
-      margin: 0 20px; padding: 16px 0 6px;
-      border-top: 1px solid var(--border);
+    .shop-list-label {
+      padding: 16px 20px 6px; border-top: 1px solid var(--border);
       font-size: 10px; font-weight: 600; letter-spacing: .12em;
       text-transform: uppercase; color: var(--muted-fg);
     }
-    .shop-list {
-      padding: 0 20px;
-      padding-bottom: calc(env(safe-area-inset-bottom) + 32px);
-    }
+    .shop-text-list { padding: 0 20px; }
     .shop-item {
       display: flex; align-items: flex-start; gap: 12px;
       padding: 14px 0; border-bottom: 1px solid var(--border);
@@ -122,17 +100,40 @@
     .shop-item-text { font-size: 15px; font-weight: 600; color: var(--fg); line-height: 1.4; }
     .shop-item.checked .shop-item-text { text-decoration: line-through; color: var(--muted-fg); }
     .shop-item-note { font-size: 12px; color: var(--muted-fg); margin-top: 2px; }
-    .shop-item-img {
-      width: 100%; max-height: 120px; object-fit: cover;
-      border-radius: var(--radius-sm); margin-top: 8px; border: 1px solid var(--border);
-    }
     .shop-item-del {
       width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
       border: none; background: none; color: var(--primary);
       font-size: 16px; cursor: pointer; opacity: 0.6;
     }
-    .shop-empty { padding: 50px 0; text-align: center; color: var(--muted-fg); font-size: 14px; }
-    .shop-empty-icon { font-size: 40px; margin-bottom: 10px; }
+    .shop-photo-section { padding: 20px 20px 0; border-top: 6px solid var(--border); margin-top: 8px; }
+    .shop-photo-upload-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .shop-photo-upload-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 16px; background: var(--muted-bg);
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600; color: var(--fg); cursor: pointer;
+    }
+    .shop-photo-count { font-size: 12px; color: var(--muted-fg); }
+    .shop-photo-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 8px; padding: 0 20px;
+      padding-bottom: calc(env(safe-area-inset-bottom) + 32px);
+    }
+    .shop-photo-thumb {
+      position: relative; aspect-ratio: 1;
+      border-radius: var(--radius-sm); overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .shop-photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .shop-photo-thumb-del {
+      position: absolute; top: 4px; right: 4px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(0,0,0,0.5); border: none;
+      color: #fff; font-size: 11px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .shop-empty { padding: 30px 0; text-align: center; color: var(--muted-fg); font-size: 14px; }
+    .shop-empty-icon { font-size: 36px; margin-bottom: 8px; }
   </style>
 </head>
 <body>
@@ -377,6 +378,18 @@
     </div>
   </div>
 
+  <!-- 🛍 購買清單 -->
+  <div class="subway-btn-wrap" style="margin-top:12px;">
+    <button class="subway-btn" onclick="openShoppingModal()" style="font-family:var(--font-sans);">
+      <span class="subway-btn-icon">🛍</span>
+      <div class="subway-btn-body">
+        <div class="subway-btn-title">購買清單</div>
+        <div class="subway-btn-sub">Vik &amp; Mike 的購物心願單</div>
+      </div>
+      <span class="subway-btn-arrow">›</span>
+    </button>
+  </div>
+
   <!-- ✈️ 航班 Dashboard — 左右並排 -->
   <div class="flight-dashboard">
     <div class="flt-card outbound">
@@ -403,18 +416,6 @@
       京都七条 · 天然溫泉<br>
       Check-in 5/28（15:00 後）· Check-out 6/1（11:00 前）
     </div>
-  </div>
-
-  <!-- 🛍 購買清單 -->
-  <div class="subway-btn-wrap" style="margin-top:12px;">
-    <button class="subway-btn" onclick="openShoppingModal()" style="font-family:var(--font-sans);">
-      <span class="subway-btn-icon">🛍</span>
-      <div class="subway-btn-body">
-        <div class="subway-btn-title">購買清單</div>
-        <div class="subway-btn-sub">Vik &amp; Mike 的購物心願單</div>
-      </div>
-      <span class="subway-btn-arrow">›</span>
-    </button>
   </div>
 
   <!-- 💡 每日主題 Tips -->
@@ -1411,21 +1412,26 @@
     </div>
   </div>
 
-  <div class="shop-form-wrap">
-    <div class="shop-sec-label">📝 新增品項</div>
+  <!-- 📝 文字清單 -->
+  <div class="shop-section">
+    <div class="shop-section-label">📝 文字清單</div>
     <input class="shop-input" id="shop-text" type="text" placeholder="想買什麼？（例：西陣織手帕、抹茶點心）">
     <input class="shop-input" id="shop-note" type="text" placeholder="備註（店名、顏色…）（可選）">
-    <div class="shop-photo-row">
-      <label class="shop-photo-label" for="shop-photo-input">📷 上傳照片</label>
-      <input type="file" id="shop-photo-input" accept="image/*" style="display:none" onchange="handleShopPhoto(event)">
-      <span class="shop-photo-hint" id="shop-photo-hint"></span>
-    </div>
-    <img class="shop-photo-preview" id="shop-photo-preview" alt="">
-    <button class="shop-add-btn" onclick="addShopItem()">＋ 加入清單</button>
+    <button class="shop-add-btn" onclick="addShopText()">＋ 加入清單</button>
   </div>
+  <div class="shop-list-label">清單</div>
+  <div class="shop-text-list" id="shop-text-list"></div>
 
-  <div class="shop-divider">品項列表</div>
-  <div class="shop-list" id="shop-list"></div>
+  <!-- 📷 圖片 -->
+  <div class="shop-photo-section">
+    <div class="shop-section-label">📷 圖片</div>
+    <div class="shop-photo-upload-row">
+      <label class="shop-photo-upload-btn" for="shop-photo-input">選擇照片（最多 5 張）</label>
+      <input type="file" id="shop-photo-input" accept="image/*" multiple style="display:none" onchange="handleShopPhotos(event)">
+      <span class="shop-photo-count" id="shop-photo-count">0 / 5</span>
+    </div>
+  </div>
+  <div class="shop-photo-grid" id="shop-photo-grid"></div>
 </div>
 
 <!-- ══════════════════════
@@ -1473,6 +1479,159 @@
 </nav>
 
 <script src="app.js"></script>
+<script>
+(function() {
+  var _shopUser = 'vik';
+
+  window.openShoppingModal = function() {
+    document.getElementById('shop-overlay').classList.add('open');
+    renderShopTexts();
+    renderShopPhotos();
+  };
+
+  window.closeShoppingModal = function() {
+    document.getElementById('shop-overlay').classList.remove('open');
+    document.getElementById('shop-text').value = '';
+    document.getElementById('shop-note').value = '';
+  };
+
+  window.switchShopUser = function(user, btn) {
+    _shopUser = user;
+    document.querySelectorAll('.shop-user-tab').forEach(function(t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+    renderShopTexts();
+    renderShopPhotos();
+  };
+
+  function getTexts() {
+    try { return JSON.parse(localStorage.getItem('shop_texts_' + _shopUser) || '[]'); } catch(e) { return []; }
+  }
+  function saveTexts(arr) {
+    try { localStorage.setItem('shop_texts_' + _shopUser, JSON.stringify(arr)); } catch(e) {}
+  }
+  function getPhotos() {
+    try { return JSON.parse(localStorage.getItem('shop_photos_' + _shopUser) || '[]'); } catch(e) { return []; }
+  }
+  function savePhotos(arr) {
+    try { localStorage.setItem('shop_photos_' + _shopUser, JSON.stringify(arr)); } catch(e) {}
+  }
+
+  window.addShopText = function() {
+    var text = (document.getElementById('shop-text').value || '').trim();
+    if (!text) { document.getElementById('shop-text').focus(); return; }
+    var note = (document.getElementById('shop-note').value || '').trim();
+    var arr = getTexts();
+    arr.unshift({ id: Date.now().toString(), text: text, note: note, checked: false });
+    saveTexts(arr);
+    document.getElementById('shop-text').value = '';
+    document.getElementById('shop-note').value = '';
+    renderShopTexts();
+  };
+
+  window.toggleShopText = function(id) {
+    saveTexts(getTexts().map(function(it) {
+      return it.id === id ? Object.assign({}, it, { checked: !it.checked }) : it;
+    }));
+    renderShopTexts();
+  };
+
+  window.deleteShopText = function(id) {
+    saveTexts(getTexts().filter(function(it) { return it.id !== id; }));
+    renderShopTexts();
+  };
+
+  window.handleShopPhotos = function(e) {
+    var files = e.target.files;
+    if (!files || !files.length) return;
+    var existing = getPhotos();
+    var slots = 5 - existing.length;
+    if (slots <= 0) { alert('最多上傳 5 張圖片'); e.target.value = ''; return; }
+    var toProcess = Math.min(files.length, slots);
+    var processed = 0;
+    for (var i = 0; i < toProcess; i++) {
+      (function(file) {
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          compressImg(ev.target.result, 800, 0.72, function(data) {
+            var photos = getPhotos();
+            if (photos.length < 5) {
+              photos.push({ id: Date.now().toString() + '_' + Math.random().toString(36).slice(2), src: data });
+              savePhotos(photos);
+            }
+            processed++;
+            if (processed === toProcess) {
+              e.target.value = '';
+              renderShopPhotos();
+            }
+          });
+        };
+        reader.readAsDataURL(file);
+      })(files[i]);
+    }
+  };
+
+  window.deleteShopPhoto = function(id) {
+    savePhotos(getPhotos().filter(function(p) { return p.id !== id; }));
+    renderShopPhotos();
+  };
+
+  function compressImg(src, maxPx, q, cb) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      var scale = (w > maxPx || h > maxPx) ? maxPx / Math.max(w, h) : 1;
+      var c = document.createElement('canvas');
+      c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      cb(c.toDataURL('image/jpeg', q));
+    };
+    img.src = src;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function renderShopTexts() {
+    var el = document.getElementById('shop-text-list');
+    if (!el) return;
+    var arr = getTexts();
+    if (!arr.length) {
+      el.innerHTML = '<div class="shop-empty"><div class="shop-empty-icon">📝</div>還沒有品項</div>';
+      return;
+    }
+    var sorted = arr.filter(function(it) { return !it.checked; })
+                    .concat(arr.filter(function(it) { return it.checked; }));
+    el.innerHTML = sorted.map(function(it) {
+      var noteHtml = it.note ? '<div class="shop-item-note">' + esc(it.note) + '</div>' : '';
+      return '<div class="shop-item' + (it.checked ? ' checked' : '') + '">'
+        + '<button class="shop-item-tick" onclick="toggleShopText(\'' + esc(it.id) + '\')">'
+        + (it.checked ? '✓' : '') + '</button>'
+        + '<div class="shop-item-body"><div class="shop-item-text">' + esc(it.text) + '</div>' + noteHtml + '</div>'
+        + '<button class="shop-item-del" onclick="deleteShopText(\'' + esc(it.id) + '\')">🗑</button>'
+        + '</div>';
+    }).join('');
+  }
+
+  function renderShopPhotos() {
+    var el = document.getElementById('shop-photo-grid');
+    var countEl = document.getElementById('shop-photo-count');
+    if (!el) return;
+    var photos = getPhotos();
+    if (countEl) countEl.textContent = photos.length + ' / 5';
+    if (!photos.length) {
+      el.innerHTML = '<div class="shop-empty" style="grid-column:1/-1"><div class="shop-empty-icon">📷</div>還沒有圖片</div>';
+      return;
+    }
+    el.innerHTML = photos.map(function(p) {
+      return '<div class="shop-photo-thumb">'
+        + '<img src="' + p.src + '" alt="">'
+        + '<button class="shop-photo-thumb-del" onclick="deleteShopPhoto(\'' + esc(p.id) + '\')">✕</button>'
+        + '</div>';
+    }).join('');
+  }
+})();
+</script>
 
 <!-- USJ 票券 lightbox -->
 <div class="ticket-overlay" id="ticket-overlay" onclick="if(!_lbZoomed)closeTicket()">
