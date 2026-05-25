@@ -1943,9 +1943,11 @@
 	      const div = document.createElement('div');
 	      div.className = 'tl-item' + (isCustom ? ' custom-item' : '');
 	      div.dataset.id = item.id;
-	      const mapLink = item.mapQ
-	        ? `<a class="tl-map-link" href="https://maps.google.com/?q=${encodeURIComponent(item.mapQ)}" target="_blank">📍 查看地圖</a>`
-	        : '';
+	      const mapLink = (item.lat && item.lng)
+	        ? `<a class="tl-map-link" href="https://maps.google.com/?q=${item.lat},${item.lng}" target="_blank">📍 查看地圖</a>`
+	        : item.mapQ
+	          ? `<a class="tl-map-link" href="https://maps.google.com/?q=${encodeURIComponent(item.mapQ)}" target="_blank">📍 查看地圖</a>`
+	          : '';
 	      const extra = isKyotoDefault && item.extra ? item.extra : '';
 	      const ticketBtn = isKyotoDefault && sourceId === 'd2_3'
 	        ? `<button class="tl-ticket-btn" onclick="openTicket()">🎫 查看快速通關券</button>`
@@ -2023,7 +2025,7 @@
 
     // Update Google Maps link
 	    if (gmLink && stops.length) {
-	      const waypoints = stops.map(s => s.mapQ||`${s.lat},${s.lng}`).join('/');
+	      const waypoints = stops.map(s => `${s.lat},${s.lng}`).join('/');
 	      gmLink.href = `https://www.google.com/maps/dir/${waypoints}`;
 	    }
 	  }
