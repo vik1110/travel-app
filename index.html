@@ -1547,17 +1547,36 @@
     renderShopPhotos();
   };
 
+  function _getAllItems() {
+    try {
+      var merged = JSON.parse(localStorage.getItem('shopping_' + _shopUser) || 'null');
+      if (merged && Array.isArray(merged)) return merged;
+      // migrate from old split keys
+      var texts = JSON.parse(localStorage.getItem('shop_texts_' + _shopUser) || '[]')
+        .map(function(it) { return Object.assign({}, it, { itemType: 'text' }); });
+      var photos = JSON.parse(localStorage.getItem('shop_photos_' + _shopUser) || '[]')
+        .map(function(it) { return { id: it.id, text: '圖片', note: '', photo: it.src, checked: false, itemType: 'photo' }; });
+      return texts.concat(photos);
+    } catch(e) { return []; }
+  }
+  function _saveAllItems(arr) {
+    try { localStorage.setItem('shopping_' + _shopUser, JSON.stringify(arr)); } catch(e) {}
+  }
   function getTexts() {
-    try { return JSON.parse(localStorage.getItem('shop_texts_' + _shopUser) || '[]'); } catch(e) { return []; }
+    return _getAllItems().filter(function(it) { return it.itemType !== 'photo'; })
+      .map(function(it) { return { id: it.id, text: it.text || '', note: it.note || '', checked: !!it.checked }; });
   }
   function saveTexts(arr) {
-    try { localStorage.setItem('shop_texts_' + _shopUser, JSON.stringify(arr)); } catch(e) {}
+    var photos = _getAllItems().filter(function(it) { return it.itemType === 'photo'; });
+    _saveAllItems(arr.map(function(it) { return Object.assign({}, it, { itemType: 'text' }); }).concat(photos));
   }
   function getPhotos() {
-    try { return JSON.parse(localStorage.getItem('shop_photos_' + _shopUser) || '[]'); } catch(e) { return []; }
+    return _getAllItems().filter(function(it) { return it.itemType === 'photo'; })
+      .map(function(it) { return { id: it.id, src: it.photo || it.src || '' }; });
   }
   function savePhotos(arr) {
-    try { localStorage.setItem('shop_photos_' + _shopUser, JSON.stringify(arr)); } catch(e) {}
+    var texts = _getAllItems().filter(function(it) { return it.itemType !== 'photo'; });
+    _saveAllItems(texts.concat(arr.map(function(it) { return { id: it.id, text: '圖片', note: '', photo: it.src, checked: false, itemType: 'photo' }; })));
   }
 
   window.addShopText = function() {
