@@ -1900,7 +1900,8 @@
 	                <input class="tl-add-time" type="time" id="add-time-${dayId}" placeholder="時間" onblur="normalizeTimeField(this)">
 	                <input class="tl-add-name" type="text" id="add-name-${dayId}" placeholder="行程名稱...">
 	              </div>
-	              <div style="display:flex;gap:8px;">
+	              <input class="tl-add-name" type="text" id="add-loc-${dayId}" placeholder="地點（選填，用於地圖）" style="margin-top:6px;width:100%;">
+	              <div style="display:flex;gap:8px;margin-top:8px;">
 	                <button class="tl-add-confirm" onclick="confirmAddItem('${dayId}')">確認新增</button>
 	                <button class="tl-add-cancel" onclick="toggleAddForm('${dayId}')">取消</button>
 	              </div>
@@ -2046,18 +2047,21 @@
   async function confirmAddItem(dayId) {
     const timeInput = document.getElementById('add-time-' + dayId);
     const nameInput = document.getElementById('add-name-' + dayId);
+    const locInput = document.getElementById('add-loc-' + dayId);
     const time = normalizeTimeField(timeInput);
     const name = (nameInput.value || '').trim();
+    const loc = locInput ? (locInput.value || '').trim() : '';
     if (!name) { nameInput.focus(); return; }
     if (!canUseRemoteItinerary()) {
       alert('目前未登入 Supabase，這筆行程只會存在本機暫存，不會寫入 itinerary_days / itinerary_items。請先到「旅程」登入後再新增共享行程。');
     }
     const items = await getSchedule(dayId);
-    items.push({ id: 'c_' + Date.now(), time, title: name, desc: '', tags: [{l:'自訂'}], isCustom: true });
+    items.push({ id: 'c_' + Date.now(), time, title: name, desc: '', tags: [{l:'自訂'}], isCustom: true, mapQ: loc || null });
     const saved = await saveSchedule(dayId, items);
     if (!saved) return;
     timeInput.value = '';
     nameInput.value = '';
+    if (locInput) locInput.value = '';
     toggleAddForm(dayId);
     renderTimeline(dayId);
   }
