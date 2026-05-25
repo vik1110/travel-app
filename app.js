@@ -802,11 +802,11 @@
 	    if (!scroll || !trip) return;
 
 	    const kyotoWeather = [
-	      { icon: '☀️', high: '28°', low: '20°', desc: '晴天' },
-	      { icon: '⛅', high: '27°', low: '19°', desc: '晴時多雲' },
-	      { icon: '🌤', high: '26°', low: '18°', desc: '多雲' },
-	      { icon: '🌦', high: '24°', low: '17°', desc: '偶陣雨' },
-	      { icon: '🌧', high: '23°', low: '17°', desc: '陣雨' }
+	      { icon: '🌧', high: '30°', low: '18°', desc: '陣雨',     rain: '60%' },
+	      { icon: '☀️', high: '31°', low: '17°', desc: '晴天',     rain: '0%'  },
+	      { icon: '☀️', high: '32°', low: '18°', desc: '晴天',     rain: '10%' },
+	      { icon: '🌦', high: '30°', low: '16°', desc: '偶陣雨',   rain: '30%' },
+	      { icon: '☀️', high: '29°', low: '17°', desc: '晴天',     rain: '0%'  }
 	    ];
 	    const dates = getTripDayDates(trip).slice(0, 7);
 	    const fallback = { icon: '☁️', high: '—', low: '—', desc: '待查' };
@@ -822,6 +822,7 @@
 	          <div class="weather-high">${weather.high}</div>
 	          <div class="weather-low">${weather.low}</div>
 	          <div class="weather-desc">${weather.desc}</div>
+	          ${weather.rain ? `<div class="weather-rain">💧 ${weather.rain}</div>` : ''}
 	        </div>`;
 	    }).join('');
 
