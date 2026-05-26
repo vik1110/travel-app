@@ -1630,10 +1630,29 @@
 	    return date ? dateToYmd(date) : null;
 	  }
 
+  async function resetRemoteKyotoDaysIfNeeded(client, tripId) {
+    if (localStorage.getItem('kyoto_remote_reset_v5')) return;
+    if (!isKyotoTrip()) return;
+    localStorage.setItem('kyoto_remote_reset_v5', '1');
+    const { data: days } = await client
+      .from('itinerary_days')
+      .select('id')
+      .eq('group_id', TRAVEL_GROUP_ID)
+      .eq('trip_id', tripId)
+      .in('day_number', [3, 4, 5]);
+    const dayIds = (days || []).map(d => d.id).filter(Boolean);
+    if (!dayIds.length) return;
+    await client.from('itinerary_items').delete()
+      .eq('group_id', TRAVEL_GROUP_ID).eq('trip_id', tripId).in('day_id', dayIds);
+    await client.from('itinerary_days').delete()
+      .eq('group_id', TRAVEL_GROUP_ID).eq('trip_id', tripId).in('day_number', [3, 4, 5]);
+  }
+
 	  async function loadRemoteItinerary() {
 	    const client = getSupabaseClient();
 	    const tripId = activeTripId;
 	    if (!client || !currentUser || !tripId) return null;
+	    await resetRemoteKyotoDaysIfNeeded(client, tripId);
 	    if (itineraryCacheByTrip[tripId]) return itineraryCacheByTrip[tripId];
 	    if (itineraryLoadPromisesByTrip[tripId]) return itineraryLoadPromisesByTrip[tripId];
 
