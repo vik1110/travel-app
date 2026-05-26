@@ -1443,25 +1443,27 @@
       {id:'d2_4',time:'21:00',title:'返回京都 · 泡溫泉',desc:'走了一天回旅館泡天然溫泉，最幸福的事',tags:[{l:'住宿',c:'dark'}],mapQ:'御宿野乃+京都七条',lat:34.9890,lng:135.7559}
     ],
     day3: [
-      {id:'d3_1',time:'08:30',title:'清水寺',desc:'早晨人少，清水舞台俯瞰京都市區。巴士 206「清水道」下車',tags:[{l:'寺廟'}],mapQ:'清水寺+京都',lat:34.9948,lng:135.7850},
-      {id:'d3_2',time:'10:30',title:'二年坂・三年坂 購物',desc:'天然礦石/瑪瑙飾品小店 · 陶器・漆器・京焼<br>傳統工藝品・名片夾・手巾',tags:[{l:'購物'},{l:'飾品',c:'gold'}],mapQ:'二年坂+三年坂+京都',lat:34.9994,lng:135.7828},
-      {id:'d3_3',time:'12:30',title:'抹茶午餐 / 甜點',desc:'<strong>伊藤久右衛門 祇園店</strong>— 抹茶拉麵 + 抹茶聖代<br><strong>茶寮 都路里</strong>— 老字號抹茶蕨餅・聖代',tags:[{l:'抹茶',c:'gold'},{l:'美食'}],mapQ:'伊藤久右衛門+祇園店',lat:35.0013,lng:135.7785},
-      {id:'d3_4',time:'14:30',title:'高台寺 or 知恩院',desc:'高台寺：枯山水庭園・安靜優美 (¥600)<br>知恩院：日本最大山門・壯觀震撼',tags:[{l:'寺廟'}],mapQ:'高台寺+京都',lat:35.0010,lng:135.7813},
-      {id:'d3_5',time:'16:30',title:'寺町京極商店街',desc:'室內拱廊，藥妝・雜貨・文具・礦石飾品，雨天也能逛',tags:[{l:'購物'}],mapQ:'寺町京極商店街+京都',lat:35.0073,lng:135.7673},
-      {id:'d3_6',time:'19:00',title:'先斗町晚餐',desc:'京都料理居酒屋，慶祝這段旅程 ✦',tags:[{l:'美食'}],mapQ:'先斗町+京都',lat:35.0038,lng:135.7727}
+      {id:'d3_1',time:'09:30',title:'飯店自助餐',desc:'御宿野乃 和食ビュッフェ。泡完溫泉後最幸福的早晨',tags:[{l:'美食'}],mapQ:'御宿野乃+京都七条',lat:34.9890,lng:135.7559},
+      {id:'d3_2',time:'10:20',title:'出發 — 七条駅 → 石清水八幡宮',desc:'京阪電車 七条駅乗車 → 石清水八幡宮駅（約30分, ¥430）<br>山頂へ ケーブルカー（¥230往返）or 徒歩25分',tags:[{l:'交通'}],mapQ:'京阪七条駅',lat:34.9859,lng:135.7590},
+      {id:'d3_3',time:'11:00',title:'石清水八幡宮',desc:'源氏ゆかりの古社・國寶本殿。展望台から八幡市を一望。京都三大縁結び神社のひとつ',tags:[{l:'神社',c:'gold'},{l:'文化'}],mapQ:'石清水八幡宮',lat:34.8779,lng:135.7058},
+      {id:'d3_4',time:'13:00',title:'🍵 宇治順遊 — 抹茶粉採購',desc:'中書島乗換 → 宇治駅（京阪宇治線 約15分）<br><strong>中村藤吉本店</strong> or <strong>伊藤久右衛門本店</strong><br>各等級宇治抹茶粉・煎茶・京都限定商品',tags:[{l:'抹茶',c:'gold'},{l:'採購'}],mapQ:'中村藤吉本店+宇治',lat:34.8877,lng:135.7994},
+      {id:'d3_5',time:'19:00',title:'空蟬亭 晚餐',desc:'',tags:[{l:'美食'},{l:'晚餐',c:'gold'}],mapQ:'空蟬亭+京都',lat:35.0050,lng:135.7680}
     ],
     day4: [
-      {id:'d4_1',time:'11:00',title:'高島屋 — 銀座白石',desc:'<strong>京都高島屋</strong>（10:00–20:00）<br>📍 <strong>銀座白石</strong> 位於 <strong>2F 寶飾・時計</strong>（建議現場確認最新樓層）<br>鑽石輕奢珠寶・品質卓越',tags:[{l:'銀座白石',c:'gold'},{l:'珠寶'}],mapQ:'京都高島屋',lat:35.0030,lng:135.7707},
-      {id:'d4_2',time:'12:30',title:'下午茶',desc:'四条河原町周邊甜點・茶室小憩，充個電再繼續逛',tags:[{l:'下午茶',c:'gold'},{l:'美食'}],mapQ:'四条河原町+京都+カフェ',lat:35.0038,lng:135.7720},
-      {id:'d4_3',time:'14:00',title:'Kyoto Loft — mina京都',desc:'<strong>mina京都 4F–6F</strong>（11:00–21:00）<br>設計文具・生活雜貨・季節選物，三層樓超好逛',tags:[{l:'Loft'},{l:'購物'}],mapQ:'ミーナ京都+ロフト',lat:35.0078,lng:135.7683},
-      {id:'d4_4',time:'15:30',title:'% Arabica — 精品咖啡',desc:'<strong>藤井大丸 1F</strong>（10:30–20:00）<br>京都人氣 Specialty Coffee，latte art 一流，必拍',tags:[{l:'☕ 咖啡',c:'gold'}],mapQ:'%Arabica+藤井大丸+京都',lat:35.0025,lng:135.7680},
-      {id:'d4_5',time:'16:30',title:'大丸京都 — agete 輕奢珠寶',desc:'<strong>大丸京都店 1F</strong>（10:00–20:00）<br>agete 日本輕奢珠寶，細膩工藝・適合日常配戴',tags:[{l:'agete',c:'gold'},{l:'珠寶'}],mapQ:'大丸京都+agete',lat:35.0030,lng:135.7665}
+      {id:'d4_1',time:'09:30',title:'旅館早餐',desc:'御宿野乃 和食ビュッフェ or 附近カフェで輕鬆早餐',tags:[{l:'美食'}],mapQ:'御宿野乃+京都七条',lat:34.9890,lng:135.7559},
+      {id:'d4_2',time:'11:00',title:'BAL 百貨',desc:'<strong>四条河原町</strong>（11:00–21:00，B1–6F）<br>時尚選品・設計雜貨・生活選物',tags:[{l:'購物'}],mapQ:'BAL+京都+四条河原町',lat:35.0068,lng:135.7700},
+      {id:'d4_3',time:'13:00',title:'🍵 中村藤吉 四条店 — 抹茶粉採購',desc:'高島屋 S.C. T8 棟 3F（BAL 旁，步行即達）<br>宇治抹茶粉・煎茶各等級，可外帶伴手禮',tags:[{l:'抹茶',c:'gold'},{l:'採購'}],mapQ:'中村藤吉+四条店+京都',lat:35.0030,lng:135.7707},
+      {id:'d4_4',time:'14:00',title:'京都高島屋（本館 + T8）',desc:'<strong>四条河原町</strong>（10:00–20:00）<br>本館 1F：Hermès・LV・Prada・Chanel・Dior・Gucci<br>本館 2F：寶飾エリア・Celine・インポートファッション',tags:[{l:'高島屋',c:'gold'},{l:'購物'}],mapQ:'京都高島屋',lat:35.0030,lng:135.7707},
+      {id:'d4_5',time:'15:00',title:'TASAKI 京都',desc:'本館 2F 寶飾エリア（建議到場向服務台確認位置）<br>日本高端珍珠珠寶，精緻工藝',tags:[{l:'TASAKI',c:'gold'},{l:'珠寶'}],mapQ:'TASAKI+京都',lat:35.0030,lng:135.7707},
+      {id:'d4_6',time:'15:45',title:'Mikimoto 京都',desc:'本館 2F 寶飾エリア（建議到場向服務台確認位置）<br>御木本・珍珠珠寶始祖，優雅經典',tags:[{l:'Mikimoto',c:'gold'},{l:'珠寶'}],mapQ:'ミキモト+京都',lat:35.0030,lng:135.7707},
+      {id:'d4_7',time:'16:30',title:'agete — 大丸京都 1F',desc:'<strong>大丸京都店 1F</strong>（10:00–20:00）<br>agete 日本輕奢珠寶，細膩工藝・適合日常配戴',tags:[{l:'agete',c:'gold'},{l:'珠寶'}],mapQ:'大丸京都+agete',lat:35.0028,lng:135.7640}
     ],
     day5: [
       {id:'d5_1',time:'08:00',title:'享用旅館早餐',desc:'御宿野乃和式定食，泡完溫泉後最幸福的一餐',tags:[{l:'美食'}],mapQ:'御宿野乃+京都七条',lat:34.9890,lng:135.7559},
+      {id:'d5_1b',time:'08:40',title:'把行李放到大廳',desc:'退房前請旅館代為保管行李（チェックアウト準備）',tags:[{l:'準備'}],mapQ:'御宿野乃+京都七条',lat:34.9890,lng:135.7559},
       {id:'d5_2',time:'10:00',title:'退房 + JR 京都伊勢丹採購',desc:'抹茶零食・漬物・伴手禮，最後補購',tags:[{l:'採購'}],mapQ:'ジェイアール京都伊勢丹',lat:34.9857,lng:135.7587},
       {id:'d5_3',time:'11:30',title:'京都 → 大阪（JR 新快速）',desc:'約 30 分鐘・¥570',tags:[{l:'交通'}],mapQ:'大阪駅',lat:34.7025,lng:135.4979},
-      {id:'d5_4',time:'12:30',title:'道頓堀 · 心齋橋',desc:'午餐大阪燒 or 章魚燒，心齋橋藥妝最後補購，Glico 看板合照',tags:[{l:'大阪'},{l:'美食'}],mapQ:'道頓堀+大阪',lat:34.6687,lng:135.5017},
+      {id:'d5_4',time:'12:30',title:'難波 · 道頓堀 · 心齋橋',desc:'午餐大阪燒 or 章魚燒，心齋橋藥妝最後補購，Glico 看板合照',tags:[{l:'大阪'},{l:'難波'},{l:'美食'}],mapQ:'難波+道頓堀+大阪',lat:34.6687,lng:135.5017},
       {id:'d5_5',time:'16:30',title:'前往 KIX 關西機場',desc:'難波搭南海特急 Rapit 約 45 分，或 JR Haruka',tags:[{l:'交通'}],mapQ:'関西国際空港',lat:34.4347,lng:135.2440},
       {id:'d5_6',time:'19:05',title:'CI173 大阪關西 → 台北桃園',desc:'21:10 抵達桃園，飛行時間約 3 小時',tags:[{l:'回家',c:'dark'}],mapQ:'桃園國際機場',lat:25.0772,lng:121.2325}
 	    ]
@@ -1482,15 +1484,15 @@
 	    },
 	    day3: {
 	      overline: '⛩ Day Three · Saturday',
-	      title: '🏯 東山文化路線 — <em>Higashiyama</em>',
-	      desc: '清水寺、石板坡道小店、抹茶甜點，京都最精華的傳統氛圍',
-	      mapHeader: '📍 今日路線 — 清水寺 → 二三年坂 → 高台寺 → 寺町'
+	      title: '🏯 石清水八幡宮 — <em>Iwashimizu</em>',
+	      desc: '飯店自助餐後出發八幡，登頂石清水八幡宮，宇治抹茶順遊採購，空蟬亭晚餐',
+	      mapHeader: '📍 今日路線 — 京都七条 → 八幡 → 宇治 → 京都'
 	    },
 	    day4: {
-	      overline: '🛍 Day Four · Sunday',
-	      title: '🎌 文化 × 購物 — <em>Shop &amp; Explore</em>',
-	      desc: '高島屋銀座白石・下午茶・Kyoto Loft・% Arabica・大丸京都 agete 輕奢珠寶',
-	      mapHeader: '📍 今日路線 — 高島屋 → mina京都 → 大丸京都'
+	      overline: '💎 Day Four · Sunday',
+	      title: '💎 購物 × 珠寶 — <em>Shop &amp; Jewelry</em>',
+	      desc: 'BAL 選品・中村藤吉抹茶・高島屋・TASAKI・Mikimoto・agete 輕奢珠寶巡禮',
+	      mapHeader: '📍 今日路線 — BAL → 高島屋 T8 → 大丸京都'
 	    },
 	    day5: {
 	      overline: '🏠 Day Five · Monday',
@@ -1502,11 +1504,12 @@
 
 	  const LMAPS = {}; // dayId → Leaflet map instance
 
-  // 強制清除 day3/day4 舊快取（行程對調後 bust cache）
-  if (!localStorage.getItem('kyoto_reset_swap_v4')) {
+  // 強制清除 day3/day4/day5 舊快取（行程更新後 bust cache）
+  if (!localStorage.getItem('kyoto_reset_v5')) {
     localStorage.removeItem('kyoto_sched_day3');
     localStorage.removeItem('kyoto_sched_day4');
-    localStorage.setItem('kyoto_reset_swap_v4', '1');
+    localStorage.removeItem('kyoto_sched_day5');
+    localStorage.setItem('kyoto_reset_v5', '1');
   }
 
 	  function dateToYmd(dt) {
