@@ -71,7 +71,7 @@ echo "🌿 建立分支：$BRANCH"
 git checkout -b "$BRANCH" -q
 
 # ── 5. Stage 要部署的檔案（逐一 add，避免單檔錯誤中斷全部）────
-for f in index.html styles.css app.js deploy.command \
+for f in index.html styles.css app.js sw.js deploy.command \
           icon.svg manifest.json \
           kyoto_mrt_01.jpg kyoto_mrt_02.jpg CLAUDE.md; do
   [ -e "$f" ] && git add "$f" 2>/dev/null
