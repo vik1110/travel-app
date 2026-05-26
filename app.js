@@ -1632,7 +1632,7 @@
 
   async function resetRemoteKyotoDaysIfNeeded(client, tripId) {
     if (!isKyotoTrip()) return;
-    if (localStorage.getItem('kyoto_remote_reset_v5')) return;
+    if (localStorage.getItem('kyoto_remote_reset_v6')) return;
     const { data: days } = await client
       .from('itinerary_days')
       .select('id')
@@ -1641,14 +1641,14 @@
       .in('day_number', [3, 4, 5]);
     const dayIds = (days || []).map(d => d.id).filter(Boolean);
     if (!dayIds.length) {
-      localStorage.setItem('kyoto_remote_reset_v5', '1');
+      localStorage.setItem('kyoto_remote_reset_v6', '1');
       return;
     }
     await client.from('itinerary_items').delete()
       .eq('group_id', TRAVEL_GROUP_ID).eq('trip_id', tripId).in('day_id', dayIds);
     await client.from('itinerary_days').delete()
       .eq('group_id', TRAVEL_GROUP_ID).eq('trip_id', tripId).in('day_number', [3, 4, 5]);
-    localStorage.setItem('kyoto_remote_reset_v5', '1');
+    localStorage.setItem('kyoto_remote_reset_v6', '1');
   }
 
 	  async function loadRemoteItinerary() {
